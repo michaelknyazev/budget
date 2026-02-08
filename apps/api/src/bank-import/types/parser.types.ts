@@ -17,6 +17,7 @@ export interface ParsedTransaction {
   amount: number;
   currency: Currency;
   type: TransactionType;
+  direction: 'inflow' | 'outflow';
   merchantName?: string | null;
   merchantLocation?: string | null;
   mccCode?: number | null;

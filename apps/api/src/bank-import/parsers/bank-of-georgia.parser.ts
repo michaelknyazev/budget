@@ -104,28 +104,32 @@ export class BankOfGeorgiaParser implements BankStatementParser {
       const eurAmount = this.parseAmount(row[5]);
       const gbpAmount = this.parseAmount(row[6]);
 
-      // Determine currency and amount from non-null/non-zero amount columns
+      // Determine currency, amount, and direction from non-null/non-zero amount columns
       let currency: Currency | null = null;
-      let amount = 0;
+      let rawAmount = 0;
 
       if (gelAmount !== null && gelAmount !== 0) {
         currency = Currency.GEL;
-        amount = Math.abs(gelAmount);
+        rawAmount = gelAmount;
       } else if (usdAmount !== null && usdAmount !== 0) {
         currency = Currency.USD;
-        amount = Math.abs(usdAmount);
+        rawAmount = usdAmount;
       } else if (eurAmount !== null && eurAmount !== 0) {
         currency = Currency.EUR;
-        amount = Math.abs(eurAmount);
+        rawAmount = eurAmount;
       } else if (gbpAmount !== null && gbpAmount !== 0) {
         currency = Currency.GBP;
-        amount = Math.abs(gbpAmount);
+        rawAmount = gbpAmount;
       }
 
       // Skip if no valid amount found
-      if (!currency || amount === 0) {
+      if (!currency || rawAmount === 0) {
         continue;
       }
+
+      const amount = Math.abs(rawAmount);
+      // Positive raw amount = money coming in; negative = money going out
+      const direction: 'inflow' | 'outflow' = rawAmount > 0 ? 'inflow' : 'outflow';
 
       // TypeScript: currency is now guaranteed to be Currency, not null
       const finalCurrency = currency;
@@ -153,6 +157,7 @@ export class BankOfGeorgiaParser implements BankStatementParser {
         amount,
         currency: finalCurrency,
         type,
+        direction,
         merchantName: merchant.name || null,
         merchantLocation: merchant.location || null,
         mccCode: mccCode || null,

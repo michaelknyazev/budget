@@ -30,6 +30,7 @@ import {
   TransactionType,
   Currency,
   INFLOW_TYPES,
+  OUTFLOW_TYPES,
   LOAN_COST_TYPES,
   CreateTransactionInput,
   TransactionResponse,
@@ -131,9 +132,23 @@ export function TransactionsView() {
     return `${day}/${month}/${year}`;
   };
 
-  const getAmountDisplay = (amount: number, type: string, currency: string) => {
-    const isInflow = INFLOW_TYPES.includes(type as TransactionType);
-    const isLoanCost = LOAN_COST_TYPES.includes(type as TransactionType);
+  const getAmountDisplay = (
+    amount: number,
+    type: string,
+    currency: string,
+    metadata?: Record<string, unknown> | null,
+  ) => {
+    const txType = type as TransactionType;
+    const isLoanCost = LOAN_COST_TYPES.includes(txType);
+
+    // For types with a fixed direction, use the constant lists
+    let isInflow = INFLOW_TYPES.includes(txType);
+
+    // For ambiguous types (FX_CONVERSION, TRANSFER), check metadata.direction
+    if (!INFLOW_TYPES.includes(txType) && !OUTFLOW_TYPES.includes(txType)) {
+      isInflow = metadata?.direction === 'inflow';
+    }
+
     const prefix = isInflow ? '+' : '-';
     const formatted = formatCurrency(amount, currency);
     return { prefix, formatted, isInflow, isLoanCost };
@@ -320,6 +335,7 @@ export function TransactionsView() {
                   transaction.amount,
                   transaction.type,
                   transaction.currency,
+                  transaction.metadata,
                 );
                 return (
                   <tr key={transaction.id}>

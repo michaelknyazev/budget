@@ -140,6 +140,7 @@ export class BankImportService {
         mccCode: parsedTx.mccCode || null,
         cardLastFour: parsedTx.cardLastFour || null,
         rawDetails: parsedTx.details,
+        metadata: { direction: parsedTx.direction },
         user: userId,
         bankImport: bankImport.id,
       });
