@@ -1,0 +1,8 @@
+@use "../tools/toRem" as *;
+
+@mixin container($max-width: 1200px) {
+  width: 100%;
+  max-width: toRem($max-width);
+  margin-left: auto;
+  margin-right: auto;
+}

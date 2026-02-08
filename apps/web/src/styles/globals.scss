@@ -1,0 +1,20 @@
+@use "tools/toRem" as *;
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+body {
+  background: var(--pt-app-background-color);
+  color: var(--pt-text-color);
+}
+
+.bp5-dark {
+  body {
+    background: var(--pt-dark-app-background-color);
+    color: var(--pt-dark-text-color);
+  }
+}

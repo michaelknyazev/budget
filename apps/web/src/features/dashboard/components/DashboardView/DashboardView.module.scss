@@ -1,0 +1,58 @@
+@use "@/styles/tools/toRem" as *;
+@use "@/styles/mixins/container" as *;
+@use "@/styles/colors" as *;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: toRem(24px);
+  padding: toRem(24px);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: toRem(16px);
+}
+
+.summaryCard {
+  padding: toRem(20px);
+}
+
+.cardTitle {
+  margin-bottom: toRem(8px);
+}
+
+.cardAmount {
+  margin: 0;
+}
+
+.categories {
+  margin-top: toRem(16px);
+}
+
+.categoryList {
+  display: flex;
+  flex-direction: column;
+  gap: toRem(12px);
+}
+
+.categoryItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.categoryName {
+  font-weight: 500;
+}
+
+.categoryAmount {
+  font-weight: 600;
+}

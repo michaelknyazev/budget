@@ -1,0 +1,22 @@
+@use "@/styles/tools/toRem" as *;
+@use "@/styles/mixins/container" as *;
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  @include container(1400px);
+  padding: toRem(24px) toRem(16px);
+  margin-top: toRem(50px); // Navbar height
+  flex: 1;
+}
+
+.loadingScreen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}

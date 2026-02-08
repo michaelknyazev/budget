@@ -1,0 +1,33 @@
+@use "@/styles/tools/toRem" as *;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: toRem(24px);
+  padding: toRem(24px);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.controls {
+  display: flex;
+  gap: toRem(12px);
+  align-items: center;
+}
+
+.table {
+  width: 100%;
+}
+
+.typeText {
+  text-transform: capitalize;
+}
+
+.actions {
+  display: flex;
+  gap: toRem(8px);
+}

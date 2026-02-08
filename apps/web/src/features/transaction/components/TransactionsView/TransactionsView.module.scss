@@ -1,0 +1,64 @@
+@use "@/styles/tools/toRem" as *;
+@use "@/styles/mixins/container" as *;
+@use "@/styles/colors" as *;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: toRem(24px);
+  padding: toRem(24px);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.filters {
+  display: flex;
+  gap: toRem(12px);
+  flex-wrap: wrap;
+}
+
+.table {
+  width: 100%;
+}
+
+.selectedRow {
+  background-color: var(--pt-intent-primary-color-1) !important;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: toRem(16px);
+  margin-top: toRem(16px);
+}
+
+.totalCount {
+  font-size: toRem(13px);
+  opacity: 0.7;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: toRem(40px);
+}
+
+.merchantHint {
+  opacity: 0.6;
+  font-size: toRem(12px);
+}
+
+.formRow {
+  display: flex;
+  gap: toRem(12px);
+}
+
+.formHalf {
+  flex: 1;
+}

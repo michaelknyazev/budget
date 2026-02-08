@@ -1,0 +1,15 @@
+// Blueprint CSS variable wrappers
+$app-bg: var(--pt-app-background-color);
+$text-color: var(--pt-text-color);
+$text-muted: var(--pt-text-color-muted);
+$divider: var(--pt-divider-black);
+$intent-success: var(--pt-intent-success-color);
+$intent-warning: var(--pt-intent-warning-color);
+$intent-danger: var(--pt-intent-danger-color);
+$intent-primary: var(--pt-intent-primary-color);
+
+// Custom budget colors
+$income-color: #0d8050;
+$expense-color: #c23030;
+$loan-color: #bf7326;
+$neutral-color: #5c7080;
