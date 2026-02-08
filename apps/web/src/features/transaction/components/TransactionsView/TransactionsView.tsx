@@ -27,12 +27,16 @@ import {
   useDeleteTransaction,
 } from '../../hooks/use-transactions';
 import { useCategories, Category } from '@/features/settings/hooks/use-categories';
+import { useIncomeSources, IncomeSource } from '@/features/settings/hooks/use-income-sources';
+import { useDisplayCurrency } from '@/contexts/DisplayCurrencyContext';
+import { useLatestRates } from '@/hooks/use-latest-rates';
 import {
   TransactionType,
   Currency,
   INFLOW_TYPES,
   OUTFLOW_TYPES,
   LOAN_COST_TYPES,
+  REAL_INCOME_TYPES,
   CreateTransactionInput,
   TransactionResponse,
   QueryTransactionsInput,
@@ -46,6 +50,7 @@ const EMPTY_FORM: CreateTransactionInput = {
   type: TransactionType.EXPENSE,
   date: new Date().toISOString().split('T')[0],
   categoryId: null,
+  incomeSourceId: null,
   merchantName: null,
   merchantLocation: null,
   mccCode: null,
@@ -69,6 +74,9 @@ export function TransactionsView() {
 
   const { data, isLoading } = useTransactions(filters);
   const { data: categories } = useCategories();
+  const { data: incomeSources } = useIncomeSources();
+  const { displayCurrency } = useDisplayCurrency();
+  const { data: latestRates } = useLatestRates();
   const createMutation = useCreateTransaction();
   const updateMutation = useUpdateTransaction();
   const deleteMutation = useDeleteTransaction();
@@ -88,6 +96,7 @@ export function TransactionsView() {
       type: tx.type as TransactionType,
       date: tx.date,
       categoryId: tx.categoryId ?? null,
+      incomeSourceId: tx.incomeSourceId ?? null,
       merchantName: tx.merchantName ?? null,
       merchantLocation: tx.merchantLocation ?? null,
       mccCode: tx.mccCode ?? null,
@@ -377,6 +386,61 @@ export function TransactionsView() {
                 );
               })}
             </tbody>
+            {data && data.transactions.length > 0 && (() => {
+              const displayRate = latestRates?.[displayCurrency] ?? 1;
+
+              let convertedInflow = 0;
+              let convertedOutflow = 0;
+
+              for (const tx of data.transactions) {
+                const txType = tx.type as TransactionType;
+                let isInflow = INFLOW_TYPES.includes(txType);
+                if (!INFLOW_TYPES.includes(txType) && !OUTFLOW_TYPES.includes(txType)) {
+                  isInflow = tx.metadata?.direction === 'inflow';
+                }
+
+                // Convert to display currency via GEL pivot:
+                // amountInGel = amount * rateToGel
+                // amountInDisplay = amountInGel / displayCurrencyRateToGel
+                const rateToGel = tx.rateToGel ?? (latestRates?.[tx.currency] ?? 1);
+                const converted = (tx.amount * rateToGel) / displayRate;
+
+                if (isInflow) {
+                  convertedInflow += converted;
+                } else {
+                  convertedOutflow += converted;
+                }
+              }
+
+              const net = convertedInflow - convertedOutflow;
+
+              return (
+                <tfoot>
+                  <tr className={styles.totalRow}>
+                    <td>
+                      <strong>Page Total</strong>
+                    </td>
+                    <td colSpan={2} className={styles.alignRight}>
+                      <Tag minimal>{displayCurrency}</Tag>
+                    </td>
+                    <td>
+                      <Tag intent={net >= 0 ? Intent.SUCCESS : Intent.DANGER}>
+                        {net >= 0 ? '+' : '-'}{formatCurrency(Math.abs(net), displayCurrency)}
+                      </Tag>
+                    </td>
+                    <td colSpan={3} className={styles.totalDetails}>
+                      <span className={styles.incomeText}>
+                        +{formatCurrency(convertedInflow, displayCurrency)}
+                      </span>
+                      {' / '}
+                      <span className={styles.expenseText}>
+                        -{formatCurrency(convertedOutflow, displayCurrency)}
+                      </span>
+                    </td>
+                  </tr>
+                </tfoot>
+              );
+            })()}
           </HTMLTable>
 
           {totalPages > 1 && (
@@ -493,6 +557,27 @@ export function TransactionsView() {
               ))}
             </HTMLSelect>
           </FormGroup>
+
+          {REAL_INCOME_TYPES.includes(form.type as TransactionType) && (
+            <FormGroup label="Income Source" helperText="Link to an income source for tracking">
+              <HTMLSelect
+                value={form.incomeSourceId ?? ''}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, incomeSourceId: e.target.value || null }))
+                }
+                fill
+              >
+                <option value="">None</option>
+                {incomeSources
+                  ?.filter((s: IncomeSource) => s.isActive)
+                  .map((source: IncomeSource) => (
+                    <option key={source.id} value={source.id}>
+                      {source.name} ({source.currency})
+                    </option>
+                  ))}
+              </HTMLSelect>
+            </FormGroup>
+          )}
 
           <FormGroup label="Merchant Name">
             <InputGroup

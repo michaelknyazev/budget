@@ -108,8 +108,10 @@ export class TransactionController {
       rawDetails: transaction.rawDetails || null,
       metadata: transaction.metadata || null,
       categoryId: transaction.category?.id || null,
+      incomeSourceId: transaction.incomeSource?.id || null,
       bankImportId: transaction.bankImport?.id || null,
       importHash: transaction.importHash || null,
+      rateToGel: transaction.exchangeRate ? parseFloat(transaction.exchangeRate.rateToGel) : null,
       createdAt: this.toISOString(transaction.createdAt),
       updatedAt: this.toISOString(transaction.updatedAt),
     };

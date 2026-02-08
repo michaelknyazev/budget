@@ -1,0 +1,99 @@
+@use "@/styles/tools/toRem" as *;
+@use "@/styles/colors" as *;
+@use "@/styles/mixins/breakpoints" as *;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: toRem(24px);
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: toRem(16px);
+
+  @include tablet-down {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.summaryCard {
+  padding: toRem(20px);
+}
+
+.cardLabel {
+  margin: 0 0 toRem(8px) 0;
+  font-size: toRem(13px);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: $c_title-gray;
+}
+
+.cardAmount {
+  font-size: toRem(28px);
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.2;
+
+  @include mobile {
+    font-size: toRem(24px);
+  }
+
+  &.income {
+    color: $income-color;
+  }
+
+  &.expense {
+    color: $expense-color;
+  }
+
+  &.loan {
+    color: $loan-color;
+  }
+
+  &.primary {
+    color: $c_accent;
+  }
+}
+
+.fullTable {
+  width: 100%;
+}
+
+.alignRight {
+  text-align: right;
+}
+
+.income {
+  color: $income-color;
+}
+
+.expense {
+  color: $expense-color;
+}
+
+.loan {
+  color: $loan-color;
+}
+
+.currentMonth {
+  background: $c_accent-light !important;
+}
+
+.currentTag {
+  margin-left: toRem(8px);
+}
+
+.totalRow {
+  background: $c_block-bg;
+
+  td {
+    border-top: 2px solid $c_block-border;
+  }
+}

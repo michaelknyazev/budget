@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@blueprintjs/core';
 import { useSession } from '@/lib/auth-client';
+import { DisplayCurrencyProvider } from '@/contexts/DisplayCurrencyContext';
 import { AppSidebar } from '../AppSidebar';
 import { AppHeader } from '../AppHeader';
 import { MobileNav } from '../MobileNav';
@@ -15,7 +16,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = useSession();
-  const [displayCurrency, setDisplayCurrency] = useState('USD');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const isPublicPage = PUBLIC_PATHS.includes(pathname);
@@ -45,21 +45,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className={styles.shell}>
-      <AppSidebar
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-      <div
-        className={`${styles.contentArea} ${sidebarCollapsed ? styles.contentCollapsed : ''}`}
-      >
-        <AppHeader
-          displayCurrency={displayCurrency}
-          onCurrencyChange={setDisplayCurrency}
+    <DisplayCurrencyProvider>
+      <div className={styles.shell}>
+        <AppSidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
-        <main className={styles.main}>{children}</main>
+        <div
+          className={`${styles.contentArea} ${sidebarCollapsed ? styles.contentCollapsed : ''}`}
+        >
+          <AppHeader />
+          <main className={styles.main}>{children}</main>
+        </div>
+        <MobileNav />
       </div>
-      <MobileNav />
-    </div>
+    </DisplayCurrencyProvider>
   );
 }

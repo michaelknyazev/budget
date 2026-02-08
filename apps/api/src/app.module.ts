@@ -16,6 +16,7 @@ import { IncomeSourceModule } from './income-source/income-source.module';
 import { BudgetTargetModule } from './budget-target/budget-target.module';
 import { ExchangeRateModule } from './exchange-rate/exchange-rate.module';
 import { BankImportModule } from './bank-import/bank-import.module';
+import { PlannedIncomeModule } from './planned-income/planned-income.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
@@ -55,6 +56,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     DepositModule,
     IncomeSourceModule,
     BudgetTargetModule,
+    PlannedIncomeModule,
 
     // Logic
     ExchangeRateModule,

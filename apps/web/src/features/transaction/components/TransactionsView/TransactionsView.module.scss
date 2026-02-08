@@ -66,3 +66,31 @@
 .formHalf {
   flex: 1;
 }
+
+.totalRow {
+  background-color: $c_accent-light;
+  font-weight: 500;
+
+  td {
+    vertical-align: middle !important;
+  }
+}
+
+.alignRight {
+  text-align: right;
+}
+
+.totalDetails {
+  font-size: toRem(13px);
+  white-space: nowrap;
+}
+
+.incomeText {
+  color: #15b371;
+  font-weight: 600;
+}
+
+.expenseText {
+  color: #cd4246;
+  font-weight: 600;
+}

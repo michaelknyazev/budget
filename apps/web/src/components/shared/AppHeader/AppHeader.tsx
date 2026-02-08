@@ -3,6 +3,7 @@
 import { SegmentedControl } from '@blueprintjs/core';
 import { usePathname } from 'next/navigation';
 import { Currency } from '@budget/schemas';
+import { useDisplayCurrency } from '@/contexts/DisplayCurrencyContext';
 import styles from './AppHeader.module.scss';
 
 const CURRENCIES = Object.values(Currency).map((c) => ({
@@ -30,17 +31,10 @@ function getPageTitle(pathname: string): string {
   return match ? PAGE_TITLES[match] : 'Budget';
 }
 
-interface AppHeaderProps {
-  displayCurrency: string;
-  onCurrencyChange: (currency: string) => void;
-}
-
-export function AppHeader({
-  displayCurrency,
-  onCurrencyChange,
-}: AppHeaderProps) {
+export function AppHeader() {
   const pathname = usePathname();
   const title = getPageTitle(pathname);
+  const { displayCurrency, setDisplayCurrency } = useDisplayCurrency();
 
   return (
     <header className={styles.header}>
@@ -50,7 +44,7 @@ export function AppHeader({
           small
           options={CURRENCIES}
           value={displayCurrency}
-          onValueChange={onCurrencyChange}
+          onValueChange={setDisplayCurrency}
         />
       </div>
     </header>

@@ -94,3 +94,36 @@
   font-weight: 600;
   color: $c_text;
 }
+
+// Year at a Glance table
+.yearlyTable {
+  width: 100%;
+}
+
+.alignRight {
+  text-align: right;
+}
+
+.incomeText {
+  color: $income-color;
+}
+
+.expenseText {
+  color: $expense-color;
+}
+
+.currentMonth {
+  background: $c_accent-light !important;
+}
+
+.currentTag {
+  margin-left: toRem(8px);
+}
+
+.totalRow {
+  background: $c_block-bg;
+
+  td {
+    border-top: 2px solid $c_block-border;
+  }
+}

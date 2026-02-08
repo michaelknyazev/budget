@@ -7,6 +7,7 @@ import { Transaction } from '@/transaction/entities/transaction.entity';
 import { BankAccount } from '@/bank-account/entities/bank-account.entity';
 import { BankOfGeorgiaParser } from '../parsers/bank-of-georgia.parser';
 import { DepositService } from '@/deposit/services/deposit.service';
+import { ExchangeRateService } from '@/exchange-rate/services/exchange-rate.service';
 import { ImportResult } from '../types/parser.types';
 import { TransactionType, AccountType, Currency } from '@budget/schemas';
 
@@ -17,6 +18,7 @@ export class BankImportService {
   constructor(
     private readonly em: EntityManager,
     private readonly depositService: DepositService,
+    private readonly exchangeRateService: ExchangeRateService,
   ) {}
 
   async processFile(
@@ -95,6 +97,17 @@ export class BankImportService {
     this.em.persist(bankImport);
     await this.em.flush();
 
+    // Collect unique (currency, date) pairs and batch-fetch exchange rates
+    const ratePairs = parsedTransactions.map((tx) => ({
+      currency: tx.currency,
+      date: tx.date,
+    }));
+    const exchangeRateMap = await this.exchangeRateService.ensureRatesForDates(ratePairs);
+    this.logger.log(
+      { ratesResolved: exchangeRateMap.size, transactions: parsedTransactions.length },
+      'Exchange rates pre-fetched for import',
+    );
+
     // Process transactions
     let created = 0;
     let skipped = 0;
@@ -126,6 +139,10 @@ export class BankImportService {
         depositAmounts.set(parsedTx.currency, current + parsedTx.amount);
       }
 
+      // Look up pre-fetched exchange rate for this transaction's currency + date
+      const rateKey = `${parsedTx.currency}|${parsedTx.date.toISOString().split('T')[0]}`;
+      const exchangeRate = exchangeRateMap.get(rateKey);
+
       // Create Transaction entity
       const transaction = this.em.create(Transaction, {
         importHash,
@@ -143,6 +160,7 @@ export class BankImportService {
         metadata: { direction: parsedTx.direction },
         user: userId,
         bankImport: bankImport.id,
+        exchangeRate: exchangeRate?.id ?? null,
       });
 
       this.em.persist(transaction);

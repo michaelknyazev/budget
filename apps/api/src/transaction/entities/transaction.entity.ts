@@ -60,6 +60,12 @@ export class Transaction {
   @ManyToOne('Category', { nullable: true, deleteRule: 'set null', updateRule: 'cascade' })
   category?: any | null;
 
+  @ManyToOne('IncomeSource', { nullable: true, deleteRule: 'set null', updateRule: 'cascade' })
+  incomeSource?: any | null;
+
+  @ManyToOne('ExchangeRate', { nullable: true, deleteRule: 'set null', updateRule: 'cascade' })
+  exchangeRate?: any | null;
+
   @Property({ type: 'timestamptz', defaultRaw: 'NOW()' })
   createdAt: Date & Opt = new Date();
 

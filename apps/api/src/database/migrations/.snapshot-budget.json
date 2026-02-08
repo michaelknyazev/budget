@@ -526,6 +526,155 @@
           "length": 36,
           "mappedType": "string"
         },
+        "income_source_id": {
+          "name": "income_source_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "uuid"
+        },
+        "month": {
+          "name": "month",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "integer"
+        },
+        "year": {
+          "name": "year",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "integer"
+        },
+        "planned_amount": {
+          "name": "planned_amount",
+          "type": "numeric(12,2)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "precision": 12,
+          "scale": 2,
+          "mappedType": "decimal"
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "text"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 6,
+          "default": "now()",
+          "mappedType": "datetime"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 6,
+          "default": "now()",
+          "mappedType": "datetime"
+        }
+      },
+      "name": "planned_income",
+      "schema": "public",
+      "indexes": [
+        {
+          "keyName": "planned_income_user_id_income_source_id_month_year_unique",
+          "columnNames": [
+            "user_id",
+            "income_source_id",
+            "month",
+            "year"
+          ],
+          "composite": true,
+          "constraint": true,
+          "primary": false,
+          "unique": true
+        },
+        {
+          "keyName": "planned_income_pkey",
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "planned_income_user_id_foreign": {
+          "constraintName": "planned_income_user_id_foreign",
+          "columnNames": [
+            "user_id"
+          ],
+          "localTableName": "public.planned_income",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.user",
+          "deleteRule": "cascade",
+          "updateRule": "cascade"
+        },
+        "planned_income_income_source_id_foreign": {
+          "constraintName": "planned_income_income_source_id_foreign",
+          "columnNames": [
+            "income_source_id"
+          ],
+          "localTableName": "public.planned_income",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.income_source",
+          "deleteRule": "cascade",
+          "updateRule": "cascade"
+        }
+      },
+      "nativeEnums": {}
+    },
+    {
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "uuid"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "varchar(36)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 36,
+          "mappedType": "string"
+        },
         "name": {
           "name": "name",
           "type": "text",
@@ -1623,6 +1772,24 @@
           "nullable": true,
           "mappedType": "uuid"
         },
+        "income_source_id": {
+          "name": "income_source_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "uuid"
+        },
+        "exchange_rate_id": {
+          "name": "exchange_rate_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "uuid"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamptz",
@@ -1758,6 +1925,32 @@
             "id"
           ],
           "referencedTableName": "public.category",
+          "deleteRule": "set null",
+          "updateRule": "cascade"
+        },
+        "transaction_income_source_id_foreign": {
+          "constraintName": "transaction_income_source_id_foreign",
+          "columnNames": [
+            "income_source_id"
+          ],
+          "localTableName": "public.transaction",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.income_source",
+          "deleteRule": "set null",
+          "updateRule": "cascade"
+        },
+        "transaction_exchange_rate_id_foreign": {
+          "constraintName": "transaction_exchange_rate_id_foreign",
+          "columnNames": [
+            "exchange_rate_id"
+          ],
+          "localTableName": "public.transaction",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.exchange_rate",
           "deleteRule": "set null",
           "updateRule": "cascade"
         }

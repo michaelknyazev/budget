@@ -8,4 +8,5 @@ export * from './bank-account';
 export * from './exchange-rate';
 export * from './budget-target';
 export * from './income-source';
+export * from './planned-income';
 export * from './dashboard';
