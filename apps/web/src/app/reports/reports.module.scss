@@ -1,0 +1,34 @@
+@use "@/styles/tools/toRem" as *;
+@use "@/styles/colors" as *;
+@use "@/styles/mixins/breakpoints" as *;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: toRem(24px);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: toRem(16px);
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.reportCard {
+  padding: toRem(24px);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.cardIcon {
+  margin-bottom: toRem(12px);
+  color: $c_accent;
+}

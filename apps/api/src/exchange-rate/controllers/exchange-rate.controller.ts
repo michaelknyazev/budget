@@ -26,6 +26,13 @@ export class ExchangeRateController {
     return this.exchangeRateService.create(dto);
   }
 
+  @Get('latest')
+  @ApiOperation({ summary: 'Get latest exchange rates for all tracked currencies' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async findLatest(): Promise<Record<string, number>> {
+    return this.exchangeRateService.findLatestRates();
+  }
+
   @Get()
   @ApiOperation({ summary: 'List all exchange rates' })
   @ApiResponse({ status: HttpStatus.OK })

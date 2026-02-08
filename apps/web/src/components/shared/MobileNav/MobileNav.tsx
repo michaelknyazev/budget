@@ -7,6 +7,7 @@ import styles from './MobileNav.module.scss';
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: 'dashboard' as const },
   { path: '/transactions', label: 'Txns', icon: 'bank-account' as const },
+  { path: '/reports', label: 'Reports', icon: 'chart' as const },
   { path: '/subscriptions', label: 'Subs', icon: 'repeat' as const },
   { path: '/loans', label: 'Loans', icon: 'credit-card' as const },
   { path: '/budget', label: 'Budget', icon: 'pie-chart' as const },

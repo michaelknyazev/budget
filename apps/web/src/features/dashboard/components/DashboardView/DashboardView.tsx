@@ -4,23 +4,63 @@ import { useState } from 'react';
 import {
   Card,
   H4,
+  HTMLTable,
   Button,
   ButtonGroup,
   Spinner,
   Section,
+  Tag,
   Intent,
 } from '@blueprintjs/core';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { useDisplayCurrency } from '@/contexts/DisplayCurrencyContext';
 import { useMonthlySummary } from '../../hooks/use-monthly-summary';
+import { useYearlySummary } from '@/features/reports/hooks/use-yearly-summary';
 import styles from './DashboardView.module.scss';
+
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+const MONTH_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 export function DashboardView() {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
-  const [currency, setCurrency] = useState('USD');
+  const { displayCurrency: currency } = useDisplayCurrency();
+  const router = useRouter();
 
   const { data, isLoading } = useMonthlySummary(month, year, currency);
+  const { data: yearlyData, isLoading: yearlyLoading } = useYearlySummary(
+    year,
+    currency,
+  );
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -28,6 +68,15 @@ export function DashboardView() {
       currency: currency,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  const fmtCompact = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
@@ -49,21 +98,6 @@ export function DashboardView() {
     }
   };
 
-  const monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
   if (isLoading) {
     return (
       <div className={styles.container}>
@@ -80,7 +114,7 @@ export function DashboardView() {
           <ButtonGroup>
             <Button icon="chevron-left" onClick={() => navigateMonth('prev')} />
             <Button minimal>
-              {monthNames[month - 1]} {year}
+              {MONTH_NAMES[month - 1]} {year}
             </Button>
             <Button icon="chevron-right" onClick={() => navigateMonth('next')} />
           </ButtonGroup>
@@ -123,12 +157,116 @@ export function DashboardView() {
             {data.topCategories.map((category, index) => (
               <div key={index} className={styles.categoryItem}>
                 <span className={styles.categoryName}>{category.name}</span>
-                <span className={styles.categoryAmount}>{formatCurrency(category.amount)}</span>
+                <span className={styles.categoryAmount}>
+                  {formatCurrency(category.amount)}
+                </span>
               </div>
             ))}
           </div>
         </Section>
       )}
+
+      {/* Year at a Glance */}
+      <Section
+        title={`${year} at a Glance`}
+        icon="calendar"
+        rightElement={
+          <Button
+            minimal
+            small
+            icon="arrow-right"
+            text="Full Report"
+            onClick={() => router.push('/reports/yearly')}
+          />
+        }
+      >
+        {yearlyLoading ? (
+          <Spinner size={30} />
+        ) : yearlyData ? (
+          <HTMLTable bordered striped interactive className={styles.yearlyTable}>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th className={styles.alignRight}>Income</th>
+                <th className={styles.alignRight}>Expenses</th>
+                <th className={styles.alignRight}>Net</th>
+              </tr>
+            </thead>
+            <tbody>
+              {yearlyData.months.map((m, idx) => {
+                const isCurrentMonth =
+                  year === now.getFullYear() && idx === now.getMonth();
+                const hasData =
+                  m.grossIncome > 0 || m.totalExpenses > 0 || m.loanCost > 0;
+
+                return (
+                  <tr
+                    key={m.month}
+                    className={isCurrentMonth ? styles.currentMonth : ''}
+                    onClick={() =>
+                      router.push(`/reports/monthly?month=${m.month}&year=${year}`)
+                    }
+                  >
+                    <td>
+                      {MONTH_SHORT[idx]}
+                      {isCurrentMonth && (
+                        <Tag
+                          minimal
+                          intent={Intent.PRIMARY}
+                          className={styles.currentTag}
+                        >
+                          Now
+                        </Tag>
+                      )}
+                    </td>
+                    <td className={`${styles.alignRight} ${styles.incomeText}`}>
+                      {hasData ? fmtCompact(m.grossIncome) : '-'}
+                    </td>
+                    <td className={`${styles.alignRight} ${styles.expenseText}`}>
+                      {hasData ? fmtCompact(m.totalExpenses) : '-'}
+                    </td>
+                    <td
+                      className={`${styles.alignRight} ${
+                        m.netIncome >= 0
+                          ? styles.incomeText
+                          : styles.expenseText
+                      }`}
+                    >
+                      {hasData ? fmtCompact(m.netIncome) : '-'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className={styles.totalRow}>
+                <td>
+                  <strong>Total</strong>
+                </td>
+                <td className={`${styles.alignRight} ${styles.incomeText}`}>
+                  <strong>
+                    {fmtCompact(yearlyData.totals.grossIncome)}
+                  </strong>
+                </td>
+                <td className={`${styles.alignRight} ${styles.expenseText}`}>
+                  <strong>
+                    {fmtCompact(yearlyData.totals.totalExpenses)}
+                  </strong>
+                </td>
+                <td
+                  className={`${styles.alignRight} ${
+                    yearlyData.totals.netIncome >= 0
+                      ? styles.incomeText
+                      : styles.expenseText
+                  }`}
+                >
+                  <strong>{fmtCompact(yearlyData.totals.netIncome)}</strong>
+                </td>
+              </tr>
+            </tfoot>
+          </HTMLTable>
+        ) : null}
+      </Section>
     </div>
   );
 }

@@ -18,7 +18,9 @@ import {
 } from '@blueprintjs/core';
 import { OverlayToaster } from '@blueprintjs/core';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { Divider } from '@blueprintjs/core';
 import { Currency } from '@budget/schemas';
+import { PlannedIncomeTable } from '../PlannedIncomeTable/PlannedIncomeTable';
 import {
   useBudgetTargets,
   useCreateBudgetTarget,
@@ -356,6 +358,14 @@ export const BudgetView = () => {
           </tbody>
         </HTMLTable>
       )}
+
+      <Divider style={{ margin: '8px 0' }} />
+
+      <PlannedIncomeTable
+        month={selectedMonth}
+        year={selectedYear}
+        displayCurrency={Currency.USD}
+      />
 
       <Dialog
         isOpen={isDialogOpen}
