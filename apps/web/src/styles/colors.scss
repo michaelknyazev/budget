@@ -8,6 +8,18 @@ $intent-warning: var(--pt-intent-warning-color);
 $intent-danger: var(--pt-intent-danger-color);
 $intent-primary: var(--pt-intent-primary-color);
 
+// Theme colors (inspired by example admin panel)
+$c_title: #394b59;
+$c_title-gray: #5c7080;
+$c_text: #182026;
+$c_accent: #0d8050;
+$c_accent-hover: #0a6640;
+$c_accent-light: rgba(#0d8050, 0.1);
+$c_block-bg: #f5f8fa;
+$c_block-border: #d8e1e8;
+$c_header-bg: #f9f9f9;
+$c_header-border: #f0f0f0;
+
 // Custom budget colors
 $income-color: #0d8050;
 $expense-color: #c23030;

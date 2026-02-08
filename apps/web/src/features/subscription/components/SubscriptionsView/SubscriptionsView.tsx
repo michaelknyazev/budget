@@ -15,9 +15,9 @@ import {
   Intent,
   NonIdealState,
   Alert,
-  H3,
   Tag,
 } from '@blueprintjs/core';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { Currency } from '@budget/schemas';
 import {
   useSubscriptions,
@@ -124,15 +124,17 @@ export function SubscriptionsView() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <H3>Subscriptions</H3>
-        <Button
-          icon="plus"
-          intent={Intent.PRIMARY}
-          text="Add Subscription"
-          onClick={() => handleOpenDialog()}
-        />
-      </div>
+      <PageHeader
+        title="Subscriptions"
+        actions={
+          <Button
+            icon="plus"
+            intent={Intent.PRIMARY}
+            text="Add Subscription"
+            onClick={() => handleOpenDialog()}
+          />
+        }
+      />
 
       <div className={styles.monthlyTotal}>
         {Object.entries(monthlyTotal).map(([cur, total]) => (

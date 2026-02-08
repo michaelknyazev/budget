@@ -1,5 +1,7 @@
 @use "tools/toRem" as *;
 
+// ── Base reset ──────────────────────────────────────────────────────────────
+
 html,
 body {
   margin: 0;
@@ -8,13 +10,126 @@ body {
 }
 
 body {
-  background: var(--pt-app-background-color);
-  color: var(--pt-text-color);
+  background: #ffffff;
+  color: #182026;
+  font-family: var(--font-inter, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.bp5-dark {
-  body {
-    background: var(--pt-dark-app-background-color);
-    color: var(--pt-dark-text-color);
+// ── Green accent overrides for Blueprint ────────────────────────────────────
+
+// Primary intent buttons → green
+.bp5-button.bp5-intent-primary {
+  background-color: #0d8050;
+
+  &:hover {
+    background-color: #0a6640;
   }
+
+  &:active {
+    background-color: #0a6640;
+  }
+}
+
+// Input focus ring → green
+.bp5-input:focus,
+.bp5-input.bp5-active {
+  box-shadow: 0 0 0 1px #0d8050, 0 0 0 3px rgba(#0d8050, 0.3), inset 0 1px 1px rgba(16, 22, 26, 0.2);
+}
+
+// Checkbox checked → green
+.bp5-control.bp5-checkbox input:checked ~ .bp5-control-indicator {
+  background-color: #0d8050;
+}
+
+// Switch checked → green
+.bp5-control.bp5-switch input:checked ~ .bp5-control-indicator {
+  background-color: #0d8050;
+}
+
+// Segmented control selected → green
+.bp5-segmented-control .bp5-button:not(.bp5-minimal).bp5-intent-primary,
+.bp5-segmented-control .bp5-button.bp5-selected {
+  background-color: #0d8050;
+  color: #ffffff;
+
+  &:hover {
+    background-color: #0a6640;
+  }
+}
+
+// Tab active indicator → green
+.bp5-tab[aria-selected="true"],
+.bp5-tab:not([aria-disabled="true"]).bp5-selected {
+  color: #0d8050;
+}
+
+.bp5-tab-indicator-wrapper .bp5-tab-indicator {
+  background-color: #0d8050;
+}
+
+// Tag intent primary → green
+.bp5-tag.bp5-intent-primary {
+  background-color: #0d8050;
+}
+
+// Progress bar primary → green
+.bp5-progress-bar.bp5-intent-primary .bp5-progress-meter {
+  background-color: #0d8050;
+}
+
+// Menu item active → green
+.bp5-menu-item.bp5-intent-primary.bp5-active {
+  background-color: #0d8050;
+}
+
+// ── General refinements ─────────────────────────────────────────────────────
+
+// Softer card borders
+.bp5-card {
+  border: 1px solid #d8e1e8;
+  box-shadow: none;
+  border-radius: 8px;
+}
+
+// Softer table styling
+.bp5-html-table {
+  th {
+    background-color: #f5f8fa;
+    color: #394b59;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  &.bp5-html-table-striped tbody tr:nth-child(odd) td {
+    background: rgba(#f5f8fa, 0.5);
+  }
+
+  &.bp5-interactive tbody tr:hover td {
+    background-color: rgba(#0d8050, 0.06);
+  }
+}
+
+// Dialog styling
+.bp5-dialog {
+  border-radius: 10px;
+}
+
+// Lighter form labels
+.bp5-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #5c7080;
+}
+
+// Callout border radius
+.bp5-callout {
+  border-radius: 8px;
 }

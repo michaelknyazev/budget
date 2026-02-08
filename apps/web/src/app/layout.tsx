@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import { Providers } from '@/lib/providers';
 import { AppShell } from '@/components/shared/AppShell';
 
@@ -9,6 +10,8 @@ import '@blueprintjs/datetime2/lib/css/blueprint-datetime2.css';
 import '@blueprintjs/select/lib/css/blueprint-select.css';
 import '@blueprintjs/table/lib/css/table.css';
 import '@/styles/globals.scss';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: 'Budget',
@@ -21,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="bp5-dark">
+    <html lang="en" className={inter.variable}>
       <body>
         <Providers>
           <AppShell>{children}</AppShell>

@@ -1,18 +1,11 @@
 @use "@/styles/tools/toRem" as *;
-@use "@/styles/mixins/container" as *;
 @use "@/styles/colors" as *;
+@use "@/styles/mixins/breakpoints" as *;
 
 .container {
   display: flex;
   flex-direction: column;
   gap: toRem(24px);
-  padding: toRem(24px);
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
 .filters {
@@ -23,10 +16,16 @@
 
 .table {
   width: 100%;
+
+  @include mobile {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 .selectedRow {
-  background-color: var(--pt-intent-primary-color-1) !important;
+  background-color: $c_accent-light !important;
 }
 
 .pagination {
@@ -39,7 +38,7 @@
 
 .totalCount {
   font-size: toRem(13px);
-  opacity: 0.7;
+  color: $c_title-gray;
 }
 
 .loading {
@@ -50,13 +49,18 @@
 }
 
 .merchantHint {
-  opacity: 0.6;
+  color: $c_title-gray;
   font-size: toRem(12px);
 }
 
 .formRow {
   display: flex;
   gap: toRem(12px);
+
+  @include mobile {
+    flex-direction: column;
+    gap: 0;
+  }
 }
 
 .formHalf {

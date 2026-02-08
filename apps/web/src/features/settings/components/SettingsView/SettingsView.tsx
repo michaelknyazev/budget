@@ -22,6 +22,7 @@ import {
   Tab,
 } from '@blueprintjs/core';
 import { OverlayToaster } from '@blueprintjs/core';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { Currency, CategoryType, AccountType } from '@budget/schemas';
 import {
   useCategories,
@@ -53,7 +54,7 @@ export const SettingsView = () => {
 
   return (
     <div className={styles.container}>
-      <H3>Settings</H3>
+      <PageHeader title="Settings" />
       <Tabs
         id="settings-tabs"
         selectedTabId={selectedTabId}

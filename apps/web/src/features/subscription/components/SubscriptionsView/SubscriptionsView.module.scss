@@ -1,37 +1,25 @@
 @use "@/styles/tools/toRem" as *;
+@use "@/styles/colors" as *;
 
 .container {
   display: flex;
   flex-direction: column;
   gap: toRem(24px);
-  padding: toRem(24px);
 }
 
-.header {
+.monthlyTotal {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: toRem(8px);
+  flex-wrap: wrap;
 }
 
-.totalCard {
-  padding: toRem(20px);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.totalLabel {
-  font-weight: 600;
-  font-size: toRem(18px);
-}
-
-.subscriptionsGrid {
+.grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(toRem(300px), 1fr));
   gap: toRem(16px);
 }
 
-.subscriptionCard {
+.card {
   display: flex;
   flex-direction: column;
   gap: toRem(12px);
@@ -43,24 +31,16 @@
   align-items: center;
 }
 
-.cardTitle {
-  margin: 0;
-  font-size: toRem(18px);
+.cardAmount {
+  font-size: toRem(20px);
+  font-weight: 600;
+  color: $c_title;
 }
 
-.cardContent {
+.cardDetails {
   display: flex;
   flex-direction: column;
-  gap: toRem(8px);
-}
-
-.cardDetail {
-  color: var(--pt-text-color-muted);
-  font-size: toRem(14px);
-}
-
-.cardActions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: auto;
+  gap: toRem(4px);
+  font-size: toRem(13px);
+  color: $c_title-gray;
 }

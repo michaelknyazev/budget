@@ -7,8 +7,8 @@ import {
   Callout,
   Spinner,
   Intent,
-  H3,
 } from '@blueprintjs/core';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { useBankImport } from '../../hooks/use-bank-import';
 import styles from './ImportView.module.scss';
 
@@ -39,7 +39,7 @@ export function ImportView() {
 
   return (
     <div className={styles.container}>
-      <H3>Import Bank Statement</H3>
+      <PageHeader title="Import Bank Statement" />
 
       <div className={styles.uploadSection}>
         <FileInput

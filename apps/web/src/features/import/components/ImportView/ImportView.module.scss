@@ -1,12 +1,10 @@
 @use "@/styles/tools/toRem" as *;
-@use "@/styles/mixins/container" as *;
 @use "@/styles/colors" as *;
 
 .container {
   display: flex;
   flex-direction: column;
   gap: toRem(24px);
-  padding: toRem(24px);
 }
 
 .uploadSection {
@@ -21,6 +19,7 @@
   align-items: center;
   gap: toRem(16px);
   padding: toRem(40px);
+  color: $c_title-gray;
 }
 
 .results {

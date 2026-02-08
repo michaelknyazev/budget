@@ -1,17 +1,49 @@
 @use "@/styles/tools/toRem" as *;
 @use "@/styles/mixins/container" as *;
+@use "@/styles/mixins/breakpoints" as *;
+
+$sidebar-width: 220px;
+$sidebar-collapsed-width: 60px;
 
 .shell {
   min-height: 100vh;
   display: flex;
+}
+
+.contentArea {
+  flex: 1;
+  display: flex;
   flex-direction: column;
+  margin-left: $sidebar-width;
+  min-height: 100vh;
+  transition: margin-left 0.2s ease;
+
+  &.contentCollapsed {
+    margin-left: $sidebar-collapsed-width;
+  }
+
+  @include tablet-down {
+    margin-left: $sidebar-collapsed-width;
+
+    &.contentCollapsed {
+      margin-left: $sidebar-collapsed-width;
+    }
+  }
+
+  @include mobile {
+    margin-left: 0;
+  }
 }
 
 .main {
-  @include container(1400px);
-  padding: toRem(24px) toRem(16px);
-  margin-top: toRem(50px); // Navbar height
+  @include container(1280px);
+  padding: toRem(24px);
   flex: 1;
+
+  @include mobile {
+    padding: toRem(16px);
+    padding-bottom: toRem(80px); // Space for mobile bottom nav
+  }
 }
 
 .loadingScreen {

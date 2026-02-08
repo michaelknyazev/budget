@@ -19,6 +19,7 @@ import {
   Alert,
 } from '@blueprintjs/core';
 import { useRouter } from 'next/navigation';
+import { PageHeader } from '@/components/shared/PageHeader';
 import {
   useTransactions,
   useCreateTransaction,
@@ -180,21 +181,23 @@ export function TransactionsView() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h2>Transactions</h2>
-        <ButtonGroup>
-          <Button
-            intent={Intent.SUCCESS}
-            icon="import"
-            onClick={() => router.push('/transactions/import')}
-          >
-            Import Statement
-          </Button>
-          <Button intent={Intent.PRIMARY} icon="plus" onClick={openCreate}>
-            Create Transaction
-          </Button>
-        </ButtonGroup>
-      </div>
+      <PageHeader
+        title="Transactions"
+        actions={
+          <ButtonGroup>
+            <Button
+              intent={Intent.SUCCESS}
+              icon="import"
+              onClick={() => router.push('/transactions/import')}
+            >
+              Import Statement
+            </Button>
+            <Button intent={Intent.PRIMARY} icon="plus" onClick={openCreate}>
+              Create Transaction
+            </Button>
+          </ButtonGroup>
+        }
+      />
 
       <div className={styles.filters}>
         <HTMLSelect

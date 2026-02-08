@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import {
   Card,
-  H2,
   H4,
   Button,
   ButtonGroup,
@@ -11,6 +10,7 @@ import {
   Section,
   Intent,
 } from '@blueprintjs/core';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { useMonthlySummary } from '../../hooks/use-monthly-summary';
 import styles from './DashboardView.module.scss';
 
@@ -74,43 +74,46 @@ export function DashboardView() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <ButtonGroup>
-          <Button icon="chevron-left" onClick={() => navigateMonth('prev')} />
-          <Button minimal>
-            {monthNames[month - 1]} {year}
-          </Button>
-          <Button icon="chevron-right" onClick={() => navigateMonth('next')} />
-        </ButtonGroup>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        actions={
+          <ButtonGroup>
+            <Button icon="chevron-left" onClick={() => navigateMonth('prev')} />
+            <Button minimal>
+              {monthNames[month - 1]} {year}
+            </Button>
+            <Button icon="chevron-right" onClick={() => navigateMonth('next')} />
+          </ButtonGroup>
+        }
+      />
 
       <div className={styles.summaryGrid}>
-        <Card className={styles.summaryCard} elevation={1}>
-          <H4 className={styles.cardTitle}>Gross Income</H4>
-          <H2 className={styles.cardAmount} style={{ color: 'var(--pt-intent-success-color)' }}>
+        <Card className={styles.summaryCard} elevation={0}>
+          <H4 className={styles.cardLabel}>Gross Income</H4>
+          <div className={`${styles.cardAmount} ${styles.income}`}>
             {data ? formatCurrency(data.grossIncome) : formatCurrency(0)}
-          </H2>
+          </div>
         </Card>
 
-        <Card className={styles.summaryCard} elevation={1}>
-          <H4 className={styles.cardTitle}>Total Expenses</H4>
-          <H2 className={styles.cardAmount} style={{ color: 'var(--pt-intent-danger-color)' }}>
+        <Card className={styles.summaryCard} elevation={0}>
+          <H4 className={styles.cardLabel}>Total Expenses</H4>
+          <div className={`${styles.cardAmount} ${styles.expense}`}>
             {data ? formatCurrency(data.totalExpenses) : formatCurrency(0)}
-          </H2>
+          </div>
         </Card>
 
-        <Card className={styles.summaryCard} elevation={1}>
-          <H4 className={styles.cardTitle}>Loan Cost</H4>
-          <H2 className={styles.cardAmount} style={{ color: 'var(--pt-intent-warning-color)' }}>
+        <Card className={styles.summaryCard} elevation={0}>
+          <H4 className={styles.cardLabel}>Loan Cost</H4>
+          <div className={`${styles.cardAmount} ${styles.loan}`}>
             {data ? formatCurrency(data.loanCost) : formatCurrency(0)}
-          </H2>
+          </div>
         </Card>
 
-        <Card className={styles.summaryCard} elevation={1}>
-          <H4 className={styles.cardTitle}>Net Income</H4>
-          <H2 className={styles.cardAmount} style={{ color: 'var(--pt-intent-primary-color)' }}>
+        <Card className={styles.summaryCard} elevation={0}>
+          <H4 className={styles.cardLabel}>Net Income</H4>
+          <div className={`${styles.cardAmount} ${styles.primary}`}>
             {data ? formatCurrency(data.netIncome) : formatCurrency(0)}
-          </H2>
+          </div>
         </Card>
       </div>
 
