@@ -19,6 +19,7 @@ import {
   Tag,
 } from '@blueprintjs/core';
 import { OverlayToaster } from '@blueprintjs/core';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { Currency } from '@budget/schemas';
 import {
   useLoans,
@@ -176,15 +177,17 @@ export const LoansView = () => {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <H3>Loans</H3>
-        <Button
-          intent={Intent.PRIMARY}
-          icon="plus"
-          text="Add Loan"
-          onClick={() => handleOpenDialog()}
-        />
-      </div>
+      <PageHeader
+        title="Loans"
+        actions={
+          <Button
+            intent={Intent.PRIMARY}
+            icon="plus"
+            text="Add Loan"
+            onClick={() => handleOpenDialog()}
+          />
+        }
+      />
 
       {totalRemaining > 0 && (
         <Card className={styles.totalCard}>

@@ -1,0 +1,40 @@
+@use "@/styles/tools/toRem" as *;
+@use "@/styles/colors" as *;
+@use "@/styles/mixins/breakpoints" as *;
+
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: toRem(16px);
+  border-bottom: 1px solid $c_header-border;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: toRem(12px);
+  }
+}
+
+.title {
+  font-size: toRem(24px);
+  font-weight: 500;
+  color: $c_title;
+  margin: 0;
+  line-height: 1.3;
+
+  @include mobile {
+    font-size: toRem(20px);
+  }
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: toRem(8px);
+
+  @include mobile {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}

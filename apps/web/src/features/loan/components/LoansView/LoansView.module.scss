@@ -1,16 +1,10 @@
 @use "@/styles/tools/toRem" as *;
+@use "@/styles/colors" as *;
 
 .container {
   display: flex;
   flex-direction: column;
   gap: toRem(24px);
-  padding: toRem(24px);
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
 .totalCard {
@@ -22,7 +16,8 @@
 
 .totalLabel {
   font-weight: 600;
-  font-size: toRem(18px);
+  font-size: toRem(16px);
+  color: $c_title;
 }
 
 .loansGrid {
@@ -46,6 +41,7 @@
 .cardTitle {
   margin: 0;
   font-size: toRem(18px);
+  color: $c_title;
 }
 
 .cardContent {
@@ -62,11 +58,12 @@
 
 .amountLabel {
   font-weight: 500;
+  color: $c_title-gray;
 }
 
 .cardDetail {
-  color: var(--pt-text-color-muted);
-  font-size: toRem(14px);
+  color: $c_title-gray;
+  font-size: toRem(13px);
 }
 
 .cardActions {

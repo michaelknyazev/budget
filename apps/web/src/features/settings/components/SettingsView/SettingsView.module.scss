@@ -1,17 +1,17 @@
 @use "@/styles/tools/toRem" as *;
+@use "@/styles/colors" as *;
 
 .container {
   display: flex;
   flex-direction: column;
   gap: toRem(24px);
-  padding: toRem(24px);
 }
 
 .tabContent {
   display: flex;
   flex-direction: column;
   gap: toRem(24px);
-  padding-top: toRem(24px);
+  padding-top: toRem(16px);
 }
 
 .tabHeader {
@@ -45,7 +45,8 @@
 
 .cardTitle {
   margin: 0;
-  font-size: toRem(18px);
+  font-size: toRem(16px);
+  color: $c_title;
 }
 
 .cardContent {
@@ -55,8 +56,8 @@
 }
 
 .cardDetail {
-  color: var(--pt-text-color-muted);
-  font-size: toRem(14px);
+  color: $c_title-gray;
+  font-size: toRem(13px);
 }
 
 .cardActions {

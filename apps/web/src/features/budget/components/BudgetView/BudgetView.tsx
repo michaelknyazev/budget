@@ -12,12 +12,12 @@ import {
   Intent,
   NonIdealState,
   Alert,
-  H3,
   Text,
   ProgressBar,
   HTMLTable,
 } from '@blueprintjs/core';
 import { OverlayToaster } from '@blueprintjs/core';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { Currency } from '@budget/schemas';
 import {
   useBudgetTargets,
@@ -244,33 +244,35 @@ export const BudgetView = () => {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <H3>Budget Targets</H3>
-        <div className={styles.controls}>
-          <HTMLSelect
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-            options={monthNames.map((name, index) => ({
-              value: index + 1,
-              label: name,
-            }))}
-          />
-          <HTMLSelect
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            options={years.map((year) => ({
-              value: year,
-              label: year.toString(),
-            }))}
-          />
-          <Button
-            intent={Intent.PRIMARY}
-            icon="plus"
-            text="Add Target"
-            onClick={() => handleOpenDialog()}
-          />
-        </div>
-      </div>
+      <PageHeader
+        title="Budget Targets"
+        actions={
+          <div className={styles.controls}>
+            <HTMLSelect
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              options={monthNames.map((name, index) => ({
+                value: index + 1,
+                label: name,
+              }))}
+            />
+            <HTMLSelect
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              options={years.map((year) => ({
+                value: year,
+                label: year.toString(),
+              }))}
+            />
+            <Button
+              intent={Intent.PRIMARY}
+              icon="plus"
+              text="Add Target"
+              onClick={() => handleOpenDialog()}
+            />
+          </div>
+        }
+      />
 
       {!targets || targets.length === 0 ? (
         <NonIdealState
