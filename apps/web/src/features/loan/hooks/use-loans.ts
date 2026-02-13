@@ -60,3 +60,17 @@ export function useDeleteLoan() {
     },
   });
 }
+
+export function useRecalculateLoans() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiInstance.post<{ created: number }>('/loan/recalculate');
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loans'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    },
+  });
+}

@@ -8,12 +8,12 @@ interface DisplayCurrencyContextType {
 }
 
 const DisplayCurrencyContext = createContext<DisplayCurrencyContextType>({
-  displayCurrency: 'USD',
+  displayCurrency: 'GEL',
   setDisplayCurrency: () => {},
 });
 
 export function DisplayCurrencyProvider({ children }: { children: ReactNode }) {
-  const [displayCurrency, setDisplayCurrency] = useState('USD');
+  const [displayCurrency, setDisplayCurrency] = useState('GEL');
 
   return (
     <DisplayCurrencyContext.Provider value={{ displayCurrency, setDisplayCurrency }}>

@@ -1,141 +1,102 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   Button,
   Dialog,
   DialogBody,
   DialogFooter,
   FormGroup,
+  InputGroup,
   NumericInput,
   HTMLSelect,
   Intent,
   NonIdealState,
   Alert,
   Text,
+  Tag,
   ProgressBar,
   HTMLTable,
+  H5,
 } from '@blueprintjs/core';
-import { OverlayToaster } from '@blueprintjs/core';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Divider } from '@blueprintjs/core';
+import { getToaster } from '@/lib/toaster';
 import { Currency } from '@budget/schemas';
+import type { CreateBudgetTargetInput } from '@budget/schemas';
 import { PlannedIncomeTable } from '../PlannedIncomeTable/PlannedIncomeTable';
 import {
+  useBudgetTargetComparison,
   useBudgetTargets,
   useCreateBudgetTarget,
   useUpdateBudgetTarget,
   useDeleteBudgetTarget,
+  useCopyPreviousMonthTargets,
 } from '../../hooks/use-budget-targets';
-import { useTransactions } from '@/features/transaction/hooks/use-transactions';
-import { CreateBudgetTargetInput } from '@budget/schemas';
-import { TransactionType } from '@budget/schemas';
+import { useCategories } from '@/features/settings/hooks/use-categories';
 import styles from './BudgetView.module.scss';
-
-const toaster = OverlayToaster.createAsync({ position: 'top' });
 
 export const BudgetView = () => {
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
 
-  const { data: targets, isLoading: targetsLoading } = useBudgetTargets({
+  const displayCurrency = Currency.USD;
+
+  const { data: comparison, isLoading } = useBudgetTargetComparison({
     month: selectedMonth,
     year: selectedYear,
+    currency: displayCurrency,
   });
 
-  const { data: transactionsData } = useTransactions({
-    month: selectedMonth,
-    year: selectedYear,
-    page: 1,
-    pageSize: 10000,
-  });
+  const { data: budgetTargets } = useBudgetTargets({ year: selectedYear, month: selectedMonth });
+  const { data: categories } = useCategories();
 
   const createMutation = useCreateBudgetTarget();
   const updateMutation = useUpdateBudgetTarget();
   const deleteMutation = useDeleteBudgetTarget();
+  const copyMutation = useCopyPreviousMonthTargets();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
-  const [editingTarget, setEditingTarget] = useState<{
-    id: string;
-    categoryId: string | null;
-    month: number;
-    year: number;
-    targetAmount: number;
-    currency: Currency;
-    type: 'EXPENSE' | 'INCOME';
-  } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<CreateBudgetTargetInput>({
+    name: '',
     categoryId: null,
     month: selectedMonth,
     year: selectedYear,
     targetAmount: 0,
     currency: Currency.USD,
-    type: 'EXPENSE',
   });
 
-  // Calculate actuals from transactions
-  const actualsByCategory = useMemo(() => {
-    if (!transactionsData?.transactions) return new Map<string, number>();
-
-    const actuals = new Map<string, number>();
-    const expenseTypes: TransactionType[] = [
-      TransactionType.EXPENSE,
-      TransactionType.FEE,
-      TransactionType.ATM_WITHDRAWAL,
-    ];
-    const incomeTypes: TransactionType[] = [
-      TransactionType.INCOME,
-      TransactionType.INTEREST_INCOME,
-    ];
-
-    transactionsData.transactions.forEach((transaction) => {
-      const categoryId = transaction.categoryId || 'total';
-      const amount = parseFloat(String(transaction.amount));
-
-      if (expenseTypes.includes(transaction.type as TransactionType)) {
-        const current = actuals.get(`expense-${categoryId}`) || 0;
-        actuals.set(`expense-${categoryId}`, current + amount);
-      } else if (incomeTypes.includes(transaction.type as TransactionType)) {
-        const current = actuals.get(`income-${categoryId}`) || 0;
-        actuals.set(`income-${categoryId}`, current + amount);
-      }
-    });
-
-    return actuals;
-  }, [transactionsData]);
-
-  const handleOpenDialog = (target?: Record<string, any>) => {
-    if (target) {
-      setEditingTarget({
-        id: target.id,
-        categoryId: target.categoryId,
-        month: target.month,
-        year: target.year,
-        targetAmount: parseFloat(target.targetAmount),
-        currency: target.currency as Currency,
-        type: target.type,
-      });
+  const handleOpenDialog = (item?: {
+    budgetTargetId: string;
+    name: string;
+    plannedAmount: number;
+    plannedCurrency: string;
+  }) => {
+    if (item) {
+      const target = budgetTargets?.find((t) => t.id === item.budgetTargetId);
+      setEditingId(item.budgetTargetId);
       setFormData({
-        categoryId: target.categoryId || null,
-        month: target.month,
-        year: target.year,
-        targetAmount: parseFloat(target.targetAmount),
-        currency: target.currency as Currency,
-        type: target.type,
+        name: item.name,
+        categoryId: target?.category?.id || null,
+        month: selectedMonth,
+        year: selectedYear,
+        targetAmount: item.plannedAmount,
+        currency: item.plannedCurrency as Currency,
       });
     } else {
-      setEditingTarget(null);
+      setEditingId(null);
       setFormData({
+        name: '',
         categoryId: null,
         month: selectedMonth,
         year: selectedYear,
         targetAmount: 0,
         currency: Currency.USD,
-        type: 'EXPENSE',
       });
     }
     setIsDialogOpen(true);
@@ -143,33 +104,36 @@ export const BudgetView = () => {
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
-    setEditingTarget(null);
+    setEditingId(null);
   };
 
   const handleSubmit = async () => {
     try {
-      if (editingTarget) {
+      if (editingId) {
         await updateMutation.mutateAsync({
-          id: editingTarget.id,
+          id: editingId,
           input: formData,
         });
-        (await toaster).show({
-          message: 'Budget target updated successfully',
+        (await getToaster()).show({
+          message: 'Planned expense updated',
           intent: Intent.SUCCESS,
           icon: 'tick',
         });
       } else {
         await createMutation.mutateAsync(formData);
-        (await toaster).show({
-          message: 'Budget target created successfully',
+        (await getToaster()).show({
+          message: 'Planned expense created',
           intent: Intent.SUCCESS,
           icon: 'tick',
         });
       }
       handleCloseDialog();
-    } catch (error) {
-      (await toaster).show({
-        message: 'Failed to save budget target',
+    } catch (error: any) {
+      const isConflict = error?.response?.status === 409;
+      (await getToaster()).show({
+        message: isConflict
+          ? 'A planned expense with this name already exists for this month. Edit the existing one instead.'
+          : 'Failed to save planned expense',
         intent: Intent.DANGER,
         icon: 'error',
       });
@@ -185,16 +149,36 @@ export const BudgetView = () => {
     if (!deleteId) return;
     try {
       await deleteMutation.mutateAsync(deleteId);
-      (await toaster).show({
-        message: 'Budget target deleted successfully',
+      (await getToaster()).show({
+        message: 'Planned expense deleted',
         intent: Intent.SUCCESS,
         icon: 'tick',
       });
       setIsDeleteAlertOpen(false);
       setDeleteId(null);
-    } catch (error) {
-      (await toaster).show({
-        message: 'Failed to delete budget target',
+    } catch {
+      (await getToaster()).show({
+        message: 'Failed to delete planned expense',
+        intent: Intent.DANGER,
+        icon: 'error',
+      });
+    }
+  };
+
+  const handleCopyPrevious = async () => {
+    try {
+      const result = await copyMutation.mutateAsync({
+        month: selectedMonth,
+        year: selectedYear,
+      });
+      (await getToaster()).show({
+        message: `Copied ${result.length} planned expenses from previous month`,
+        intent: Intent.SUCCESS,
+        icon: 'tick',
+      });
+    } catch {
+      (await getToaster()).show({
+        message: 'Failed to copy from previous month',
         intent: Intent.DANGER,
         icon: 'error',
       });
@@ -214,29 +198,25 @@ export const BudgetView = () => {
     return Intent.DANGER;
   };
 
-  const getActualAmount = (target: Record<string, any>): number => {
-    const key = `${target?.type.toLowerCase()}-${target?.categoryId || 'total'}`;
-    return actualsByCategory.get(key) || 0;
+  const getStatusTag = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return <Tag intent={Intent.SUCCESS} minimal>Paid</Tag>;
+      case 'partial':
+        return <Tag intent={Intent.WARNING} minimal>Partial</Tag>;
+      default:
+        return <Tag minimal>Pending</Tag>;
+    }
   };
 
   const monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
   ];
 
   const years = Array.from({ length: 10 }, (_, i) => currentDate.getFullYear() - 5 + i);
 
-  if (targetsLoading) {
+  if (isLoading) {
     return (
       <div className={styles.container}>
         <Text>Loading...</Text>
@@ -247,7 +227,7 @@ export const BudgetView = () => {
   return (
     <div className={styles.container}>
       <PageHeader
-        title="Budget Targets"
+        title="Budget"
         actions={
           <div className={styles.controls}>
             <HTMLSelect
@@ -266,140 +246,192 @@ export const BudgetView = () => {
                 label: year.toString(),
               }))}
             />
-            <Button
-              intent={Intent.PRIMARY}
-              icon="plus"
-              text="Add Target"
-              onClick={() => handleOpenDialog()}
-            />
           </div>
         }
       />
 
-      {!targets || targets.length === 0 ? (
-        <NonIdealState
-          icon="chart"
-          title="No budget targets"
-          description={`Set budget targets for ${monthNames[selectedMonth - 1]} ${selectedYear}.`}
-          action={
+      <div className={styles.section}>
+        <div className={styles.header}>
+          <H5 style={{ margin: 0 }}>Planned Expenses</H5>
+          <div className={styles.headerActions}>
             <Button
-              intent={Intent.PRIMARY}
+              icon="duplicate"
+              text="Copy Previous Month"
+              small
+              onClick={handleCopyPrevious}
+              loading={copyMutation.isPending}
+            />
+            <Button
               icon="plus"
-              text="Add Target"
+              text="Add Planned Expense"
+              intent={Intent.PRIMARY}
+              small
               onClick={() => handleOpenDialog()}
             />
-          }
-        />
-      ) : (
-        <HTMLTable className={styles.table} striped interactive>
-          <thead>
-            <tr>
-              <th>Category</th>
-              <th>Type</th>
-              <th>Target</th>
-              <th>Actual</th>
-              <th>Remaining</th>
-              <th>% Used</th>
-              <th>Progress</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {targets.map((target) => {
-              const actual = getActualAmount(target);
-              const targetAmount = parseFloat(target.targetAmount);
-              const remaining = targetAmount - actual;
-              const percentUsed = targetAmount > 0 ? (actual / targetAmount) * 100 : 0;
-              const progressIntent = getProgressIntent(percentUsed);
+          </div>
+        </div>
 
-              return (
-                <tr key={target.id}>
-                  <td>{target.category?.name || 'Total'}</td>
-                  <td>
-                    <Text className={styles.typeText}>{target.type}</Text>
-                  </td>
-                  <td>{formatCurrency(targetAmount, target.currency)}</td>
-                  <td>{formatCurrency(actual, target.currency)}</td>
-                  <td>
-                    <span style={{ color: remaining < 0 ? 'var(--pt-intent-danger-color)' : 'var(--pt-intent-success-color)' }}>
-                      {formatCurrency(remaining, target.currency)}
-                    </span>
-                  </td>
-                  <td>
-                    <span>{percentUsed.toFixed(1)}%</span>
-                  </td>
-                  <td>
-                    <ProgressBar
-                      value={Math.min(percentUsed / 100, 1)}
-                      intent={progressIntent}
-                      stripes={false}
-                    />
-                  </td>
-                  <td>
-                    <div className={styles.actions}>
-                      <Button
-                        icon="edit"
-                        minimal
-                        small
-                        onClick={() => handleOpenDialog(target)}
+        {!comparison || comparison.items.length === 0 ? (
+          <div className={styles.emptyState}>
+            <NonIdealState
+              icon="dollar"
+              title="No planned expenses"
+              description="Add planned expenses to track obligatory monthly spending."
+              action={
+                <Button
+                  intent={Intent.PRIMARY}
+                  icon="plus"
+                  text="Add Planned Expense"
+                  onClick={() => handleOpenDialog()}
+                />
+              }
+            />
+          </div>
+        ) : (
+          <HTMLTable className={styles.table} striped interactive>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Planned</th>
+                <th>Actual</th>
+                <th>Planned ({displayCurrency})</th>
+                <th>Actual ({displayCurrency})</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {comparison.items.map((item) => {
+                const percentUsed =
+                  item.plannedAmount > 0
+                    ? (item.actualAmount / item.plannedAmount) * 100
+                    : 0;
+                const progressIntent = getProgressIntent(percentUsed);
+
+                return (
+                  <tr key={item.budgetTargetId}>
+                    <td>{item.name}</td>
+                    <td>{item.categoryName || '—'}</td>
+                    <td>
+                      {formatCurrency(item.plannedAmount, item.plannedCurrency)}
+                    </td>
+                    <td>
+                      {formatCurrency(item.actualAmount, item.plannedCurrency)}
+                    </td>
+                    <td>
+                      {formatCurrency(item.convertedPlannedAmount, displayCurrency)}
+                    </td>
+                    <td>
+                      {formatCurrency(item.convertedActualAmount, displayCurrency)}
+                    </td>
+                    <td>
+                      <div className={styles.statusCell}>
+                        {getStatusTag(item.status)}
+                        {item.linkedTransactionCount > 0 && (
+                          <Tag minimal icon="link">
+                            {item.linkedTransactionCount} tx
+                          </Tag>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <ProgressBar
+                        value={Math.min(percentUsed / 100, 1)}
+                        intent={progressIntent}
+                        stripes={false}
                       />
-                      <Button
-                        icon="trash"
-                        minimal
-                        small
-                        intent={Intent.DANGER}
-                        onClick={() => handleDeleteClick(target.id)}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </HTMLTable>
-      )}
+                    </td>
+                    <td>
+                      <div className={styles.actions}>
+                        <Button
+                          icon="edit"
+                          minimal
+                          small
+                          onClick={() => handleOpenDialog(item)}
+                        />
+                        <Button
+                          icon="trash"
+                          minimal
+                          small
+                          intent={Intent.DANGER}
+                          onClick={() => handleDeleteClick(item.budgetTargetId)}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr className={styles.totalsRow}>
+                <td colSpan={4}>Total</td>
+                <td>
+                  {formatCurrency(comparison.totalPlanned, displayCurrency)}
+                </td>
+                <td>
+                  {formatCurrency(comparison.totalActual, displayCurrency)}
+                </td>
+                <td />
+                <td />
+                <td />
+              </tr>
+            </tbody>
+          </HTMLTable>
+        )}
+      </div>
 
       <Divider style={{ margin: '8px 0' }} />
 
       <PlannedIncomeTable
         month={selectedMonth}
         year={selectedYear}
-        displayCurrency={Currency.USD}
+        displayCurrency={displayCurrency}
       />
 
       <Dialog
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
-        title={editingTarget ? 'Edit Budget Target' : 'Add Budget Target'}
+        title={editingId ? 'Edit Planned Expense' : 'Add Planned Expense'}
       >
         <DialogBody>
-          <FormGroup label="Month" labelFor="month">
-            <NumericInput
-              id="month"
-              value={formData.month}
-              onValueChange={(value) =>
-                setFormData({ ...formData, month: value || 1 })
+          <FormGroup label="Name" labelFor="name" labelInfo="(required)">
+            <InputGroup
+              id="name"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
               }
-              min={1}
-              max={12}
-              stepSize={1}
+              placeholder="e.g. Family, Rent, Groceries"
             />
           </FormGroup>
 
-          <FormGroup label="Year" labelFor="year">
-            <NumericInput
-              id="year"
-              value={formData.year}
-              onValueChange={(value) =>
-                setFormData({ ...formData, year: value || currentDate.getFullYear() })
+          <FormGroup
+            label="Category"
+            labelFor="categoryId"
+            helperText="Optional — link to a transaction category"
+          >
+            <HTMLSelect
+              id="categoryId"
+              value={formData.categoryId ?? ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  categoryId: e.target.value || null,
+                })
               }
-              min={2020}
-              max={2100}
-              stepSize={1}
+              options={[
+                { value: '', label: '— None —' },
+                ...(categories ?? [])
+                  .filter((c) => c.type === 'EXPENSE' || c.type === 'ANY')
+                  .map((c) => ({
+                    value: c.id,
+                    label: c.name,
+                  })),
+              ]}
             />
           </FormGroup>
 
-          <FormGroup label="Target Amount" labelFor="targetAmount" labelInfo="(required)">
+          <FormGroup label="Planned Amount" labelFor="targetAmount" labelInfo="(required)">
             <NumericInput
               id="targetAmount"
               value={formData.targetAmount}
@@ -424,30 +456,17 @@ export const BudgetView = () => {
               options={Object.values(Currency)}
             />
           </FormGroup>
-
-          <FormGroup label="Type" labelFor="type">
-            <HTMLSelect
-              id="type"
-              value={formData.type}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  type: e.target.value as 'EXPENSE' | 'INCOME',
-                })
-              }
-              options={['EXPENSE', 'INCOME']}
-            />
-          </FormGroup>
         </DialogBody>
         <DialogFooter
           actions={
             <>
               <Button text="Cancel" onClick={handleCloseDialog} />
               <Button
-                text={editingTarget ? 'Update' : 'Create'}
+                text={editingId ? 'Update' : 'Create'}
                 intent={Intent.PRIMARY}
                 onClick={handleSubmit}
-                disabled={formData.targetAmount <= 0}
+                disabled={!formData.name.trim() || formData.targetAmount <= 0}
+                loading={createMutation.isPending || updateMutation.isPending}
               />
             </>
           }
@@ -466,7 +485,7 @@ export const BudgetView = () => {
         confirmButtonText="Delete"
         cancelButtonText="Cancel"
       >
-        <p>Are you sure you want to delete this budget target?</p>
+        <p>Are you sure you want to delete this planned expense?</p>
       </Alert>
     </div>
   );

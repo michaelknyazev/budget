@@ -18,25 +18,25 @@ import {
   Text,
   Tag,
 } from '@blueprintjs/core';
-import { OverlayToaster } from '@blueprintjs/core';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { getToaster } from '@/lib/toaster';
 import { Currency } from '@budget/schemas';
 import {
   useLoans,
   useCreateLoan,
   useUpdateLoan,
   useDeleteLoan,
+  useRecalculateLoans,
 } from '../../hooks/use-loans';
 import { CreateLoanInput } from '@budget/schemas';
 import styles from './LoansView.module.scss';
-
-const toaster = OverlayToaster.createAsync({ position: 'top' });
 
 export const LoansView = () => {
   const { data: loans, isLoading } = useLoans();
   const createMutation = useCreateLoan();
   const updateMutation = useUpdateLoan();
   const deleteMutation = useDeleteLoan();
+  const recalculateMutation = useRecalculateLoans();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
@@ -105,14 +105,14 @@ export const LoansView = () => {
           id: editingLoan.id,
           input: formData,
         });
-        (await toaster).show({
+        (await getToaster()).show({
           message: 'Loan updated successfully',
           intent: Intent.SUCCESS,
           icon: 'tick',
         });
       } else {
         await createMutation.mutateAsync(formData);
-        (await toaster).show({
+        (await getToaster()).show({
           message: 'Loan created successfully',
           intent: Intent.SUCCESS,
           icon: 'tick',
@@ -120,7 +120,7 @@ export const LoansView = () => {
       }
       handleCloseDialog();
     } catch (error) {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to save loan',
         intent: Intent.DANGER,
         icon: 'error',
@@ -137,7 +137,7 @@ export const LoansView = () => {
     if (!deleteId) return;
     try {
       await deleteMutation.mutateAsync(deleteId);
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Loan deleted successfully',
         intent: Intent.SUCCESS,
         icon: 'tick',
@@ -145,8 +145,27 @@ export const LoansView = () => {
       setIsDeleteAlertOpen(false);
       setDeleteId(null);
     } catch (error) {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to delete loan',
+        intent: Intent.DANGER,
+        icon: 'error',
+      });
+    }
+  };
+
+  const handleRecalculate = async () => {
+    try {
+      const result = await recalculateMutation.mutateAsync();
+      (await getToaster()).show({
+        message: result.created > 0
+          ? `Created ${result.created} loan(s) from disbursement transactions`
+          : 'No new loans to create — all disbursements are already linked',
+        intent: result.created > 0 ? Intent.SUCCESS : Intent.NONE,
+        icon: result.created > 0 ? 'tick' : 'info-sign',
+      });
+    } catch (error) {
+      (await getToaster()).show({
+        message: 'Failed to recalculate loans',
         intent: Intent.DANGER,
         icon: 'error',
       });
@@ -180,12 +199,20 @@ export const LoansView = () => {
       <PageHeader
         title="Loans"
         actions={
-          <Button
-            intent={Intent.PRIMARY}
-            icon="plus"
-            text="Add Loan"
-            onClick={() => handleOpenDialog()}
-          />
+          <>
+            <Button
+              icon="refresh"
+              text="Recalculate"
+              onClick={handleRecalculate}
+              loading={recalculateMutation.isPending}
+            />
+            <Button
+              intent={Intent.PRIMARY}
+              icon="plus"
+              text="Add Loan"
+              onClick={() => handleOpenDialog()}
+            />
+          </>
         }
       />
 

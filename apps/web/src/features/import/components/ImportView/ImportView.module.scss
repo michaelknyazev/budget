@@ -7,23 +7,216 @@
   gap: toRem(24px);
 }
 
+// ── Upload controls ──────────────────────────────────────────
+
 .uploadSection {
   display: flex;
   gap: toRem(12px);
-  align-items: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.loading {
+// ── File queue (pre-import table) ────────────────────────────
+
+.fileQueue {
+  width: 100%;
+
+  td,
+  th {
+    vertical-align: middle;
+  }
+}
+
+.fileSize {
+  color: $c_title-gray;
+  font-size: toRem(12px);
+}
+
+.removeBtn {
+  opacity: 0.5;
+  transition: opacity 0.15s;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+// ── Progress header ──────────────────────────────────────────
+
+.progressHeader {
+  display: flex;
+  align-items: center;
+  gap: toRem(12px);
+}
+
+.progressBarWrap {
+  flex: 1;
+  max-width: toRem(400px);
+}
+
+// ── File cards (during / after import) ───────────────────────
+
+.fileCards {
   display: flex;
   flex-direction: column;
+  gap: toRem(12px);
+}
+
+.fileCard {
+  border-left: 4px solid $c_block-border;
+  transition: border-color 0.2s;
+
+  &.statusUploading {
+    border-left-color: $intent-primary;
+  }
+
+  &.statusSuccess {
+    border-left-color: $intent-success;
+  }
+
+  &.statusError {
+    border-left-color: $intent-danger;
+  }
+}
+
+.fileCardHeader {
+  display: flex;
   align-items: center;
+  gap: toRem(8px);
+  margin-bottom: toRem(8px);
+}
+
+.fileName {
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ── Metadata grid inside a successful file card ──────────────
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(toRem(260px), 1fr));
+  gap: toRem(6px) toRem(24px);
+  font-size: toRem(13px);
+  margin-top: toRem(8px);
+}
+
+.metaItem {
+  display: flex;
+  gap: toRem(6px);
+}
+
+.metaLabel {
+  color: $c_title-gray;
+  white-space: nowrap;
+
+  &::after {
+    content: ":";
+  }
+}
+
+.metaValue {
+  font-weight: 500;
+}
+
+.balanceParts {
+  display: flex;
+  gap: toRem(8px);
+  flex-wrap: wrap;
+}
+
+.balanceChip {
+  font-size: toRem(12px);
+  font-weight: 500;
+  background: $c_block-bg;
+  border: 1px solid $c_block-border;
+  border-radius: toRem(3px);
+  padding: toRem(1px) toRem(6px);
+}
+
+// ── Transaction counts row ───────────────────────────────────
+
+.countsRow {
+  display: flex;
   gap: toRem(16px);
-  padding: toRem(40px);
+  margin-top: toRem(8px);
+  font-size: toRem(13px);
+}
+
+.countItem {
+  display: flex;
+  gap: toRem(4px);
+}
+
+.countLabel {
   color: $c_title-gray;
 }
 
-.results {
+.countValue {
+  font-weight: 600;
+}
+
+.countCreated {
+  color: $income-color;
+}
+
+.countSkipped {
+  color: $loan-color;
+}
+
+// ── Error state inside a file card ───────────────────────────
+
+.errorText {
+  color: $intent-danger;
+  font-size: toRem(13px);
+  margin-top: toRem(4px);
+}
+
+// ── Summary banner ───────────────────────────────────────────
+
+.summaryGrid {
   display: flex;
-  flex-direction: column;
-  gap: toRem(8px);
+  gap: toRem(16px);
+  flex-wrap: wrap;
+
+  > * {
+    flex: 1;
+    min-width: toRem(120px);
+    text-align: center;
+  }
+}
+
+.summaryValue {
+  font-size: toRem(20px);
+  font-weight: 700;
+}
+
+.summaryLabel {
+  font-size: toRem(12px);
+  color: $c_title-gray;
+  margin-top: toRem(2px);
+}
+
+// ── Skipped transactions inline section ──────────────────────
+
+.skippedSection {
+  margin-top: toRem(8px);
+  padding-top: toRem(8px);
+  border-top: 1px solid $c_block-border;
+}
+
+.skippedTable {
+  width: 100%;
+  font-size: toRem(12px);
+}
+
+.skippedDetails {
+  max-width: toRem(400px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

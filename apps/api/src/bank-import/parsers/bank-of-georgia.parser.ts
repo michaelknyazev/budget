@@ -18,48 +18,68 @@ export class BankOfGeorgiaParser implements BankStatementParser {
       throw new Error('Details sheet not found');
     }
 
-    // Read account owner at C2
-    const accountOwner = this.getCellValue(detailsSheet, 'C2') || '';
+    // Build a label→row map from column A so we don't rely on fixed row positions.
+    // Different BoG statements may have varying numbers of card rows, shifting
+    // dates and balances up or down.
+    const labelMap = new Map<string, number>(); // normalized label → row number
+    const range = XLSX.utils.decode_range(detailsSheet['!ref'] || 'A1:C20');
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      const cell = detailsSheet[XLSX.utils.encode_cell({ r, c: 0 })];
+      if (cell?.v) {
+        const label = String(cell.v).trim().toLowerCase().replace(/:$/, '');
+        labelMap.set(label, r + 1); // store as 1-based row
+      }
+    }
 
-    // Read IBAN at C3
-    const iban = this.getCellValue(detailsSheet, 'C3') || '';
+    // Account owner (row labeled "Account Owner" or fallback to C2)
+    const ownerRow = labelMap.get('account owner') ?? 2;
+    const accountOwner = this.getCellValue(detailsSheet, `C${ownerRow}`) || '';
 
-    // Read cards at C4-C6
+    // IBAN (row labeled "Account No" or fallback to C3)
+    const ibanRow = labelMap.get('account no') ?? 3;
+    const iban = this.getCellValue(detailsSheet, `C${ibanRow}`) || '';
+
+    // Cards — read rows between the IBAN row and the date-from row
     const cards: string[] = [];
-    for (let row = 4; row <= 6; row++) {
+    const cardRow = labelMap.get('card') ?? (ibanRow + 1);
+    const dateFromRow =
+      labelMap.get('filter date from') ?? labelMap.get('date from') ?? (cardRow + 1);
+    for (let row = cardRow; row < dateFromRow; row++) {
       const card = this.getCellValue(detailsSheet, `C${row}`);
       if (card) {
         cards.push(card);
       }
     }
 
-    // Read dates at C7-C8 (format DD/MM/YYYY)
-    const periodFromStr = this.getCellValue(detailsSheet, 'C7') || '';
-    const periodToStr = this.getCellValue(detailsSheet, 'C8') || '';
+    // Period dates — look for labelled rows, fall back to old positions
+    const dateToRow =
+      labelMap.get('filter date to') ?? labelMap.get('date to') ?? (dateFromRow + 1);
+    const periodFromStr = this.getCellValue(detailsSheet, `C${dateFromRow}`) || '';
+    const periodToStr = this.getCellValue(detailsSheet, `C${dateToRow}`) || '';
 
     const periodFrom = this.parseDate(periodFromStr);
     const periodTo = this.parseDate(periodToStr);
 
-    // Read balances at C9-C16 (parse "1854.85GEL" format)
+    // Balances — find "Starting Balance" and "End Balance" label rows,
+    // then read 4 consecutive currency rows (GEL, USD, EUR, GBP) from column C.
+    const startingBalanceRow =
+      labelMap.get('starting balance') ?? (dateToRow + 1);
+    const endBalanceRow =
+      labelMap.get('end balance') ?? (startingBalanceRow + 4);
+
     const startingBalance: Record<string, number> = {};
     const endBalance: Record<string, number> = {};
-
-    // Starting balances: C9-C12 (GEL, USD, EUR, GBP)
     const currencies = ['GEL', 'USD', 'EUR', 'GBP'];
-    for (let i = 0; i < currencies.length; i++) {
-      const cellValue = this.getCellValue(detailsSheet, `C${9 + i}`);
-      const cur = currencies[i]!;
-      if (cellValue) {
-        startingBalance[cur] = this.parseBalance(cellValue);
-      }
-    }
 
-    // End balances: C13-C16 (GEL, USD, EUR, GBP)
     for (let i = 0; i < currencies.length; i++) {
-      const cellValue = this.getCellValue(detailsSheet, `C${13 + i}`);
       const cur = currencies[i]!;
-      if (cellValue) {
-        endBalance[cur] = this.parseBalance(cellValue);
+      const startVal = this.getCellValue(detailsSheet, `C${startingBalanceRow + i}`);
+      if (startVal) {
+        startingBalance[cur] = this.parseBalance(startVal);
+      }
+      const endVal = this.getCellValue(detailsSheet, `C${endBalanceRow + i}`);
+      if (endVal) {
+        endBalance[cur] = this.parseBalance(endVal);
       }
     }
 
@@ -79,6 +99,12 @@ export class BankOfGeorgiaParser implements BankStatementParser {
     if (!transactionsSheet) {
       throw new Error('Transactions sheet not found');
     }
+
+    // Read account owner from Details sheet for transfer classification
+    const detailsSheet = workbook.Sheets['Details'];
+    const accountOwner = detailsSheet
+      ? this.getCellValue(detailsSheet, 'C2') || ''
+      : '';
 
     const data = XLSX.utils.sheet_to_json(transactionsSheet, {
       header: 1,
@@ -139,7 +165,7 @@ export class BankOfGeorgiaParser implements BankStatementParser {
       const postingDate = date; // Use same date for posting date
 
       // Classify transaction type
-      const type = this.classifyType(details);
+      const type = this.classifyType(details, accountOwner);
 
       // Extract merchant info
       const merchant = this.extractMerchant(details);
@@ -168,7 +194,7 @@ export class BankOfGeorgiaParser implements BankStatementParser {
     return transactions;
   }
 
-  private classifyType(details: string): TransactionType {
+  private classifyType(details: string, accountOwner: string): TransactionType {
     const detailsLower = details.toLowerCase();
 
     if (detailsLower.includes('loan disbursement')) {
@@ -183,12 +209,16 @@ export class BankOfGeorgiaParser implements BankStatementParser {
       return TransactionType.LOAN_INTEREST;
     }
 
-    if (detailsLower.includes('foreign exchange')) {
+    if (detailsLower.includes('foreign exchange') || detailsLower.includes('automatic conversion')) {
       return TransactionType.FX_CONVERSION;
     }
 
-    if (detailsLower.includes('placing funds on deposit')) {
+    if (detailsLower.includes('placing funds on deposit') || detailsLower.includes('funds transfer from electronic till to the deposit')) {
       return TransactionType.DEPOSIT;
+    }
+
+    if (detailsLower.includes('plus points exchange')) {
+      return TransactionType.TRANSFER;
     }
 
     if (detailsLower.includes('interest payment')) {
@@ -199,8 +229,10 @@ export class BankOfGeorgiaParser implements BankStatementParser {
       return TransactionType.INCOME;
     }
 
+    // 'Between banks, instantly 24/7' = instant inter-bank transfer (e.g., TBC → BoG).
+    // These are external incoming transfers (real income), NOT self-transfers.
     if (detailsLower.includes('between banks, instantly')) {
-      return TransactionType.TRANSFER;
+      return TransactionType.INCOME;
     }
 
     if (detailsLower.includes('cash deposit via payment machine')) {
@@ -211,8 +243,26 @@ export class BankOfGeorgiaParser implements BankStatementParser {
       return TransactionType.ATM_WITHDRAWAL;
     }
 
-    if (detailsLower.includes('solo internatioanl package maintenance fee')) {
+    if (detailsLower.includes('maintenance fee')) {
       return TransactionType.FEE;
+    }
+
+    if (detailsLower.includes('cashback')) {
+      return TransactionType.INCOME;
+    }
+
+    // Georgian: auto-debit cover / overdraft cover (internal bank transfers)
+    if (detailsLower.includes('საინკასო დავალების') || detailsLower.includes('ოვერდრაფტის')) {
+      return TransactionType.TRANSFER;
+    }
+
+    if (detailsLower.includes('money transfer received')) {
+      return TransactionType.INCOME;
+    }
+
+    // Reversals and refunds are money coming back (income)
+    if (detailsLower.includes('reversal') || detailsLower.includes('refund')) {
+      return TransactionType.INCOME;
     }
 
     if (detailsLower.includes('payment - amount:') && detailsLower.includes('merchant:')) {
@@ -220,15 +270,67 @@ export class BankOfGeorgiaParser implements BankStatementParser {
     }
 
     if (detailsLower.includes('outgoing transfer')) {
+      // Distinguish self-transfers (inter-account) from payments to others
+      const beneficiary = this.extractBeneficiary(details);
+      if (beneficiary && !this.isSamePerson(beneficiary, accountOwner)) {
+        return TransactionType.EXPENSE;
+      }
       return TransactionType.TRANSFER;
     }
 
     if (detailsLower.includes('incoming transfer')) {
+      // Distinguish inter-account transfers from real external income
+      const sender = this.extractSender(details);
+      if (sender && this.isSamePerson(sender, accountOwner)) {
+        return TransactionType.TRANSFER;
+      }
       return TransactionType.INCOME;
     }
 
     // Default to EXPENSE
     return TransactionType.EXPENSE;
+  }
+
+  /**
+   * Extract the beneficiary name from an outgoing transfer detail string.
+   * Format: "Outgoing Transfer - Amount: GEL10,000.00; Beneficiary: kniazeva mariia; Account: ..."
+   */
+  private extractBeneficiary(details: string): string | null {
+    const match = details.match(/Beneficiary:\s*([^;]+)/i);
+    return match?.[1]?.trim() || null;
+  }
+
+  private extractSender(details: string): string | null {
+    const match = details.match(/Sender:\s*([^;]+)/i);
+    return match?.[1]?.trim() || null;
+  }
+
+  /**
+   * Compare two person names, ignoring case and word order.
+   * Returns true if all parts of one name appear in the other.
+   * e.g. "Mikhail Kniazev" matches "kniazev mikhail"
+   */
+  private isSamePerson(name1: string, name2: string): boolean {
+    if (!name1 || !name2) return false;
+
+    const normalize = (n: string) =>
+      n
+        .toLowerCase()
+        .replace(/[^a-z\s]/g, '')
+        .split(/\s+/)
+        .filter(Boolean)
+        .sort();
+
+    const parts1 = normalize(name1);
+    const parts2 = normalize(name2);
+
+    if (parts1.length === 0 || parts2.length === 0) return false;
+
+    // Check if all parts of the shorter name appear in the longer name
+    const [shorter, longer] =
+      parts1.length <= parts2.length ? [parts1, parts2] : [parts2, parts1];
+
+    return shorter.every((part) => longer.includes(part));
   }
 
   private extractMerchant(details: string): { name?: string; location?: string } {

@@ -21,8 +21,8 @@ import {
   Tabs,
   Tab,
 } from '@blueprintjs/core';
-import { OverlayToaster } from '@blueprintjs/core';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { getToaster } from '@/lib/toaster';
 import { Currency, CategoryType, AccountType } from '@budget/schemas';
 import {
   useCategories,
@@ -46,8 +46,6 @@ import { CreateCategoryInput } from '@budget/schemas';
 import { CreateBankAccountInput } from '@budget/schemas';
 import { CreateIncomeSourceInput } from '@budget/schemas';
 import styles from './SettingsView.module.scss';
-
-const toaster = OverlayToaster.createAsync({ position: 'top' });
 
 export const SettingsView = () => {
   const [selectedTabId, setSelectedTabId] = useState<string>('categories');
@@ -137,14 +135,14 @@ const CategoriesTab = () => {
           id: editingCategory.id,
           input: formData,
         });
-        (await toaster).show({
+        (await getToaster()).show({
           message: 'Category updated successfully',
           intent: Intent.SUCCESS,
           icon: 'tick',
         });
       } else {
         await createMutation.mutateAsync(formData);
-        (await toaster).show({
+        (await getToaster()).show({
           message: 'Category created successfully',
           intent: Intent.SUCCESS,
           icon: 'tick',
@@ -152,7 +150,7 @@ const CategoriesTab = () => {
       }
       handleCloseDialog();
     } catch (error) {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to save category',
         intent: Intent.DANGER,
         icon: 'error',
@@ -169,7 +167,7 @@ const CategoriesTab = () => {
     if (!deleteId) return;
     try {
       await deleteMutation.mutateAsync(deleteId);
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Category deleted successfully',
         intent: Intent.SUCCESS,
         icon: 'tick',
@@ -177,7 +175,7 @@ const CategoriesTab = () => {
       setIsDeleteAlertOpen(false);
       setDeleteId(null);
     } catch (error) {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to delete category',
         intent: Intent.DANGER,
         icon: 'error',
@@ -436,14 +434,14 @@ const BankAccountsTab = () => {
           id: editingAccount.id,
           input: formData,
         });
-        (await toaster).show({
+        (await getToaster()).show({
           message: 'Bank account updated successfully',
           intent: Intent.SUCCESS,
           icon: 'tick',
         });
       } else {
         await createMutation.mutateAsync(formData);
-        (await toaster).show({
+        (await getToaster()).show({
           message: 'Bank account created successfully',
           intent: Intent.SUCCESS,
           icon: 'tick',
@@ -451,7 +449,7 @@ const BankAccountsTab = () => {
       }
       handleCloseDialog();
     } catch (error) {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to save bank account',
         intent: Intent.DANGER,
         icon: 'error',
@@ -468,7 +466,7 @@ const BankAccountsTab = () => {
     if (!deleteId) return;
     try {
       await deleteMutation.mutateAsync(deleteId);
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Bank account deleted successfully',
         intent: Intent.SUCCESS,
         icon: 'tick',
@@ -476,7 +474,7 @@ const BankAccountsTab = () => {
       setIsDeleteAlertOpen(false);
       setDeleteId(null);
     } catch (error) {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to delete bank account',
         intent: Intent.DANGER,
         icon: 'error',
@@ -745,14 +743,14 @@ const IncomeSourcesTab = () => {
           id: editingSource.id,
           input: formData,
         });
-        (await toaster).show({
+        (await getToaster()).show({
           message: 'Income source updated successfully',
           intent: Intent.SUCCESS,
           icon: 'tick',
         });
       } else {
         await createMutation.mutateAsync(formData);
-        (await toaster).show({
+        (await getToaster()).show({
           message: 'Income source created successfully',
           intent: Intent.SUCCESS,
           icon: 'tick',
@@ -760,7 +758,7 @@ const IncomeSourcesTab = () => {
       }
       handleCloseDialog();
     } catch (error) {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to save income source',
         intent: Intent.DANGER,
         icon: 'error',
@@ -777,7 +775,7 @@ const IncomeSourcesTab = () => {
     if (!deleteId) return;
     try {
       await deleteMutation.mutateAsync(deleteId);
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Income source deleted successfully',
         intent: Intent.SUCCESS,
         icon: 'tick',
@@ -785,7 +783,7 @@ const IncomeSourcesTab = () => {
       setIsDeleteAlertOpen(false);
       setDeleteId(null);
     } catch (error) {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to delete income source',
         intent: Intent.DANGER,
         icon: 'error',
@@ -801,7 +799,7 @@ const IncomeSourcesTab = () => {
         input: { isActive: !source.isActive },
       });
     } catch (error) {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to update income source',
         intent: Intent.DANGER,
         icon: 'error',

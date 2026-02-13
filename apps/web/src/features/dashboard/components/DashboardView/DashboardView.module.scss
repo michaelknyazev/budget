@@ -98,10 +98,23 @@
 // Year at a Glance table
 .yearlyTable {
   width: 100%;
+
+  @include mobile {
+    font-size: toRem(12px);
+  }
+}
+
+.tableScroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .alignRight {
   text-align: right;
+}
+
+.alignCenter {
+  text-align: center;
 }
 
 .incomeText {
@@ -110,6 +123,27 @@
 
 .expenseText {
   color: $expense-color;
+}
+
+.plannedText {
+  opacity: 0.55;
+  font-weight: 400;
+}
+
+.groupHeader {
+  text-align: center;
+  font-weight: 600;
+  font-size: toRem(12px);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 2px solid $c_block-border;
+}
+
+.subHeader {
+  font-size: toRem(11px);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: $c_title-gray;
 }
 
 .currentMonth {
@@ -126,4 +160,70 @@
   td {
     border-top: 2px solid $c_block-border;
   }
+}
+
+// Year Summary Cards (Planned vs Actual)
+.yearSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: toRem(16px);
+
+  @include tablet-down {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.yearSummaryCard {
+  padding: toRem(20px);
+}
+
+.yearCardRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: toRem(4px);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.yearCardLabel {
+  font-size: toRem(12px);
+  color: $c_title-gray;
+  font-weight: 500;
+}
+
+.yearCardValue {
+  font-size: toRem(18px);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.varianceRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: toRem(6px);
+  padding-top: toRem(6px);
+  border-top: 1px solid $c_block-border;
+}
+
+.variancePositive {
+  font-size: toRem(12px);
+  font-weight: 600;
+  color: $income-color;
+}
+
+.varianceNegative {
+  font-size: toRem(12px);
+  font-weight: 600;
+  color: $expense-color;
+}
+
+.baselineRow {
+  margin-bottom: toRem(12px);
 }

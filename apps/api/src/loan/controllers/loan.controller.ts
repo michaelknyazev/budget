@@ -30,6 +30,16 @@ export class LoanController {
     return this.loanService.create(dto, user.id);
   }
 
+  @Post('recalculate')
+  @ApiOperation({ summary: 'Auto-create loans from unlinked LOAN_DISBURSEMENT transactions' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async recalculate(
+    @CurrentUser() user: CurrentUserData,
+  ): Promise<{ created: number }> {
+    const created = await this.loanService.recalculateFromTransactions(user.id);
+    return { created };
+  }
+
   @Get()
   @ApiOperation({ summary: 'List all loans' })
   @ApiResponse({ status: HttpStatus.OK })

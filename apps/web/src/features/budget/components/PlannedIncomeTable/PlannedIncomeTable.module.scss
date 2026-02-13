@@ -27,6 +27,12 @@
   gap: toRem(8px);
 }
 
+.statusCell {
+  display: flex;
+  align-items: center;
+  gap: toRem(6px);
+}
+
 .totalsRow {
   font-weight: 600;
 

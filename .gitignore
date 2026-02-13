@@ -36,3 +36,6 @@ apps/api/tmp/
 __tmp/
 
 # Personal
+*.xlsx
+*.xls
+statements/

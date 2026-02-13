@@ -10,3 +10,4 @@ export * from './budget-target';
 export * from './income-source';
 export * from './planned-income';
 export * from './dashboard';
+export * from './bank-import';

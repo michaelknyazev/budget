@@ -7,6 +7,7 @@ export interface MonthlySummary {
   totalExpenses: number;
   loanCost: number;
   netIncome: number;
+  depositBalance: number;
   topCategories: Array<{
     name: string;
     amount: number;

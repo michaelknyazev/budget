@@ -1,20 +1,22 @@
 'use client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiInstance } from '@/lib/api-instance';
-import {
+import type {
   CreateBudgetTargetInput,
   UpdateBudgetTargetInput,
   QueryBudgetTargetInput,
+  BudgetTargetComparisonResponse,
 } from '@budget/schemas';
 
 export interface BudgetTarget {
   id: string;
+  name: string;
   categoryId: string | null;
   month: number;
   year: number;
   targetAmount: string;
   currency: string;
-  type: 'EXPENSE' | 'INCOME';
+  type: string;
   createdAt: string;
   updatedAt: string;
   category?: {
@@ -23,17 +25,36 @@ export interface BudgetTarget {
   } | null;
 }
 
-export function useBudgetTargets(params?: QueryBudgetTargetInput) {
+export function useBudgetTargets(params?: { year: number; month?: number }) {
   return useQuery<BudgetTarget[]>({
     queryKey: ['budget-targets', params],
     queryFn: async () => {
       const { data } = await apiInstance.get<BudgetTarget[]>('/budget-target');
-      // Filter client-side if params provided
       if (params) {
         return data.filter(
-          (target) => target.month === params.month && target.year === params.year,
+          (target) =>
+            target.year === params.year &&
+            (params.month === undefined || target.month === params.month),
         );
       }
+      return data;
+    },
+  });
+}
+
+export function useBudgetTargetComparison(params: {
+  month: number;
+  year: number;
+  currency: string;
+}) {
+  return useQuery<BudgetTargetComparisonResponse>({
+    queryKey: ['budget-target-comparison', params],
+    queryFn: async () => {
+      const { data } =
+        await apiInstance.get<BudgetTargetComparisonResponse>(
+          '/budget-target/comparison',
+          { params },
+        );
       return data;
     },
   });
@@ -48,6 +69,7 @@ export function useCreateBudgetTarget() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budget-targets'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-target-comparison'] });
     },
   });
 }
@@ -67,6 +89,7 @@ export function useUpdateBudgetTarget() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budget-targets'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-target-comparison'] });
     },
   });
 }
@@ -77,6 +100,24 @@ export function useDeleteBudgetTarget() {
     mutationFn: (id: string) => apiInstance.delete(`/budget-target/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budget-targets'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-target-comparison'] });
+    },
+  });
+}
+
+export function useCopyPreviousMonthTargets() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { month: number; year: number }) => {
+      const { data } = await apiInstance.post<BudgetTarget[]>(
+        '/budget-target/copy-previous',
+        params,
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-targets'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-target-comparison'] });
     },
   });
 }

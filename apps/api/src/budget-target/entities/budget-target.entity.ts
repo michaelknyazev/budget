@@ -1,14 +1,18 @@
-import { Entity, PrimaryKey, Property, ManyToOne, Enum, Opt } from '@mikro-orm/core';
+import { Entity, PrimaryKey, Property, ManyToOne, Enum, Unique, Opt } from '@mikro-orm/core';
 import { randomUUID } from 'crypto';
 import { Currency } from '@budget/schemas';
 
 @Entity({ tableName: 'budget_target' })
+@Unique({ properties: ['user', 'name', 'month', 'year'] })
 export class BudgetTarget {
   @PrimaryKey({ type: 'uuid' })
   id: string & Opt = randomUUID();
 
   @ManyToOne('User', { deleteRule: 'cascade', updateRule: 'cascade' })
   user!: any;
+
+  @Property({ type: 'text' })
+  name!: string;
 
   @ManyToOne('Category', { nullable: true, deleteRule: 'set null', updateRule: 'cascade' })
   category?: any | null;

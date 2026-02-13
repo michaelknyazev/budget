@@ -71,6 +71,7 @@ export const PlannedIncomeComparisonItemSchema = z.object({
   convertedPlannedAmount: z.number(),
   convertedActualAmount: z.number(),
   status: z.enum(['received', 'partial', 'pending']),
+  linkedTransactionCount: z.number(),
 });
 
 export type PlannedIncomeComparisonItem = z.infer<

@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Loan } from '../entities/loan.entity';
-import { CreateLoanInput, UpdateLoanInput, Currency } from '@budget/schemas';
+import { Transaction } from '@/transaction/entities/transaction.entity';
+import { CreateLoanInput, UpdateLoanInput, Currency, TransactionType } from '@budget/schemas';
 
 @Injectable()
 export class LoanService {
@@ -10,7 +11,7 @@ export class LoanService {
   constructor(private readonly em: EntityManager) {}
 
   async findAll(userId: string): Promise<Loan[]> {
-    return this.em.find(Loan, { user: userId });
+    return this.em.find(Loan, { user: userId }, { orderBy: { createdAt: 'DESC' } });
   }
 
   async findById(id: string): Promise<Loan> {
@@ -60,5 +61,50 @@ export class LoanService {
     const loan = await this.findById(id);
     await this.em.removeAndFlush(loan);
     this.logger.log({ loanId: id }, 'Loan deleted');
+  }
+
+  /**
+   * Walk all LOAN_DISBURSEMENT transactions that have no linked Loan entity,
+   * auto-create a Loan for each, and link the transaction.
+   */
+  async recalculateFromTransactions(userId: string): Promise<number> {
+    const disbursements = await this.em.find(Transaction, {
+      user: userId,
+      type: TransactionType.LOAN_DISBURSEMENT,
+      loan: null,
+    } as any);
+
+    let created = 0;
+    for (const tx of disbursements) {
+      const amount = parseFloat(tx.amount);
+      const dateStr = tx.date instanceof Date
+        ? tx.date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        : new Date(tx.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const amountStr = new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+      }).format(amount);
+
+      const loan = await this.create(
+        {
+          title: `Loan ${tx.currency} ${amountStr} (${dateStr})`,
+          amountLeft: amount,
+          monthlyPayment: 0,
+          currency: tx.currency as Currency,
+          holder: 'Auto-created',
+          loanNumber: null,
+        },
+        userId,
+      );
+
+      this.em.assign(tx, { loan: loan.id });
+      created++;
+    }
+
+    if (created > 0) {
+      await this.em.flush();
+    }
+
+    this.logger.log({ userId, created }, 'Recalculated loans from transactions');
+    return created;
   }
 }
