@@ -23,7 +23,7 @@ export class TransactionService {
     const transaction = await this.em.findOne(
       Transaction,
       { id },
-      { populate: ['category', 'bankImport', 'incomeSource'] },
+      { populate: ['category', 'bankImport', 'incomeSource', 'plannedIncome'] },
     );
     if (!transaction) {
       throw new NotFoundException({ message: 'Transaction not found', id });
@@ -58,7 +58,7 @@ export class TransactionService {
       limit: query.pageSize,
       offset: (query.page - 1) * query.pageSize,
       orderBy: { date: 'DESC' },
-      populate: ['category', 'incomeSource', 'exchangeRate'],
+      populate: ['category', 'incomeSource', 'plannedIncome', 'exchangeRate'],
     });
 
     return { transactions, total };
@@ -74,6 +74,7 @@ export class TransactionService {
       user: userId,
       category: data.categoryId || null,
       incomeSource: data.incomeSourceId || null,
+      plannedIncome: data.plannedIncomeId || null,
     });
 
     this.em.persist(transaction);
@@ -98,6 +99,8 @@ export class TransactionService {
     if (data.categoryId !== undefined) updateData.category = data.categoryId || null;
     if (data.incomeSourceId !== undefined)
       updateData.incomeSource = data.incomeSourceId || null;
+    if (data.plannedIncomeId !== undefined)
+      updateData.plannedIncome = data.plannedIncomeId || null;
 
     this.em.assign(transaction, updateData);
     await this.em.flush();

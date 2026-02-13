@@ -32,6 +32,9 @@ export const YearlyMonthDataSchema = z.object({
   totalExpenses: z.number(),
   loanCost: z.number(),
   netIncome: z.number(),
+  plannedIncome: z.number(),
+  plannedExpenses: z.number(),
+  plannedNetIncome: z.number(),
   expensesByCurrency: z.record(CurrencyEnum, z.number()),
 });
 
@@ -46,8 +49,14 @@ export const YearlySummaryResponseSchema = z.object({
     totalExpenses: z.number(),
     loanCost: z.number(),
     netIncome: z.number(),
+    plannedIncome: z.number(),
+    plannedExpenses: z.number(),
+    plannedNetIncome: z.number(),
   }),
+  /** Baseline before Jan 1 of this year: account starting balances + prior-year net income */
+  startingBalance: z.number(),
   cumulativeSavings: z.array(z.number()),
+  plannedCumulativeSavings: z.array(z.number()),
 });
 
 export type YearlySummaryResponse = z.infer<typeof YearlySummaryResponseSchema>;

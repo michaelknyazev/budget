@@ -30,10 +30,25 @@ export interface BankStatementParser {
   parseTransactions(workbook: any): ParsedTransaction[];
 }
 
+export interface SkippedDetail {
+  date: string;
+  amount: string;
+  currency: string;
+  rawDetails: string;
+  reason: string;
+}
+
 export interface ImportResult {
   bankImportId: string;
   created: number;
   skipped: number;
   totalTransactions: number;
   loanCostTotal: number;
+  accountIban: string;
+  accountOwner: string;
+  periodFrom: string;
+  periodTo: string;
+  startingBalance: Record<string, number>;
+  endBalance: Record<string, number>;
+  skippedDetails: SkippedDetail[];
 }

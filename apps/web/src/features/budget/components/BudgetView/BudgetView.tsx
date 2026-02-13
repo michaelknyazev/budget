@@ -16,9 +16,9 @@ import {
   ProgressBar,
   HTMLTable,
 } from '@blueprintjs/core';
-import { OverlayToaster } from '@blueprintjs/core';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Divider } from '@blueprintjs/core';
+import { getToaster } from '@/lib/toaster';
 import { Currency } from '@budget/schemas';
 import { PlannedIncomeTable } from '../PlannedIncomeTable/PlannedIncomeTable';
 import {
@@ -31,8 +31,6 @@ import { useTransactions } from '@/features/transaction/hooks/use-transactions';
 import { CreateBudgetTargetInput } from '@budget/schemas';
 import { TransactionType } from '@budget/schemas';
 import styles from './BudgetView.module.scss';
-
-const toaster = OverlayToaster.createAsync({ position: 'top' });
 
 export const BudgetView = () => {
   const currentDate = new Date();
@@ -153,14 +151,14 @@ export const BudgetView = () => {
           id: editingTarget.id,
           input: formData,
         });
-        (await toaster).show({
+        (await getToaster()).show({
           message: 'Budget target updated successfully',
           intent: Intent.SUCCESS,
           icon: 'tick',
         });
       } else {
         await createMutation.mutateAsync(formData);
-        (await toaster).show({
+        (await getToaster()).show({
           message: 'Budget target created successfully',
           intent: Intent.SUCCESS,
           icon: 'tick',
@@ -168,7 +166,7 @@ export const BudgetView = () => {
       }
       handleCloseDialog();
     } catch (error) {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to save budget target',
         intent: Intent.DANGER,
         icon: 'error',
@@ -185,7 +183,7 @@ export const BudgetView = () => {
     if (!deleteId) return;
     try {
       await deleteMutation.mutateAsync(deleteId);
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Budget target deleted successfully',
         intent: Intent.SUCCESS,
         icon: 'tick',
@@ -193,7 +191,7 @@ export const BudgetView = () => {
       setIsDeleteAlertOpen(false);
       setDeleteId(null);
     } catch (error) {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to delete budget target',
         intent: Intent.DANGER,
         icon: 'error',

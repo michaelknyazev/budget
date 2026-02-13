@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { EntityManager } from '@mikro-orm/postgresql';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { UniqueConstraintViolationException, EntityManager } from '@mikro-orm/postgresql';
 import { PlannedIncome } from '../entities/planned-income.entity';
 import { Transaction } from '@/transaction/entities/transaction.entity';
 import { IncomeSourceService } from '@/income-source/services/income-source.service';
@@ -7,8 +7,6 @@ import { ExchangeRateService } from '@/exchange-rate/services/exchange-rate.serv
 import {
   CreatePlannedIncomeInput,
   UpdatePlannedIncomeInput,
-  REAL_INCOME_TYPES,
-  TransactionType,
 } from '@budget/schemas';
 import type { PlannedIncomeComparisonResponse } from '@budget/schemas';
 
@@ -63,7 +61,19 @@ export class PlannedIncomeService {
     });
 
     this.em.persist(planned);
-    await this.em.flush();
+    try {
+      await this.em.flush();
+    } catch (error) {
+      if (error instanceof UniqueConstraintViolationException) {
+        throw new ConflictException({
+          message: 'Planned income already exists for this income source in the selected month',
+          incomeSourceId: data.incomeSourceId,
+          month: data.month,
+          year: data.year,
+        });
+      }
+      throw error;
+    }
     this.logger.log({ plannedIncomeId: planned.id }, 'Planned income created');
 
     return planned;
@@ -158,9 +168,6 @@ export class PlannedIncomeService {
     // Get planned income for this month
     const plannedItems = await this.findAll(userId, year, month);
 
-    // Calculate date range for the month
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
     const midDate = new Date(year, month - 1, 15);
 
     const items = [];
@@ -171,13 +178,10 @@ export class PlannedIncomeService {
       const plannedAmount = parseFloat(planned.plannedAmount);
       const sourceCurrency = planned.incomeSource.currency;
 
-      // Get actual income transactions for this income source this month
+      // Get transactions manually linked to this planned income entry
       const transactions = await this.em.find(Transaction, {
-        user: userId,
-        incomeSource: planned.incomeSource.id,
-        date: { $gte: startDate, $lte: endDate },
-        type: { $in: REAL_INCOME_TYPES as TransactionType[] },
-      });
+        plannedIncome: planned.id,
+      } as any);
 
       const actualAmount = transactions.reduce(
         (sum, tx) => sum + parseFloat(tx.amount),
@@ -198,7 +202,7 @@ export class PlannedIncomeService {
         midDate,
       );
 
-      // Determine status
+      // Determine status based on linked transactions
       let status: 'received' | 'partial' | 'pending' = 'pending';
       if (actualAmount >= plannedAmount && plannedAmount > 0) {
         status = 'received';
@@ -219,6 +223,7 @@ export class PlannedIncomeService {
         convertedPlannedAmount: this.round(convertedPlanned),
         convertedActualAmount: this.round(convertedActual),
         status,
+        linkedTransactionCount: transactions.length,
       });
     }
 

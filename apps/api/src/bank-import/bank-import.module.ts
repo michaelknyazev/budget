@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { BankImport } from './entities/bank-import.entity';
+import { SkippedTransaction } from './entities/skipped-transaction.entity';
 import { Transaction } from '@/transaction/entities/transaction.entity';
 import { BankAccount } from '@/bank-account/entities/bank-account.entity';
 import { ExchangeRate } from '@/exchange-rate/entities/exchange-rate.entity';
@@ -11,7 +12,7 @@ import { ExchangeRateModule } from '@/exchange-rate/exchange-rate.module';
 
 @Module({
   imports: [
-    MikroOrmModule.forFeature([BankImport, Transaction, BankAccount, ExchangeRate]),
+    MikroOrmModule.forFeature([BankImport, SkippedTransaction, Transaction, BankAccount, ExchangeRate]),
     DepositModule,
     ExchangeRateModule,
   ],

@@ -42,6 +42,12 @@ export const CreateTransactionSchema = z.object({
     .nullable()
     .optional()
     .describe('Income source (for INCOME/INTEREST_INCOME transactions)'),
+  plannedIncomeId: z
+    .string()
+    .uuid()
+    .nullable()
+    .optional()
+    .describe('Linked planned income entry'),
 });
 
 export type CreateTransactionInput = z.infer<typeof CreateTransactionSchema>;
@@ -51,7 +57,7 @@ export type UpdateTransactionInput = z.infer<typeof UpdateTransactionSchema>;
 
 export const QueryTransactionsSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  pageSize: z.coerce.number().int().min(1).max(100000).default(100),
   month: z.coerce
     .number()
     .int()
@@ -95,6 +101,7 @@ export const TransactionResponseSchema = z.object({
   metadata: z.record(z.unknown()).nullable(),
   categoryId: z.string().uuid().nullable(),
   incomeSourceId: z.string().uuid().nullable(),
+  plannedIncomeId: z.string().uuid().nullable(),
   bankImportId: z.string().uuid().nullable(),
   importHash: z.string().nullable(),
   rateToGel: z.number().nullable().describe('Exchange rate to GEL for this transaction date'),

@@ -53,4 +53,12 @@ export class DashboardController {
       query.currency,
     );
   }
+
+  @Get('balance-reconciliation')
+  @ApiOperation({
+    summary: 'Compare calculated balances against bank statement balances',
+  })
+  async getBalanceReconciliation(@CurrentUser() user: CurrentUserData) {
+    return this.dashboardService.getBalanceReconciliation(user.id);
+  }
 }

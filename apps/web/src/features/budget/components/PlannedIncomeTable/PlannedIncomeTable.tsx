@@ -17,7 +17,7 @@ import {
   Alert,
   H5,
 } from '@blueprintjs/core';
-import { OverlayToaster } from '@blueprintjs/core';
+import { getToaster } from '@/lib/toaster';
 import { Currency } from '@budget/schemas';
 import { useIncomeSources } from '@/features/settings/hooks/use-income-sources';
 import {
@@ -29,8 +29,6 @@ import {
   usePlannedIncome,
 } from '../../hooks/use-planned-income';
 import styles from './PlannedIncomeTable.module.scss';
-
-const toaster = OverlayToaster.createAsync({ position: 'top' });
 
 interface PlannedIncomeTableProps {
   month: number;
@@ -109,7 +107,7 @@ export const PlannedIncomeTable = ({
             notes: formData.notes || null,
           },
         });
-        (await toaster).show({
+        (await getToaster()).show({
           message: 'Planned income updated',
           intent: Intent.SUCCESS,
           icon: 'tick',
@@ -122,16 +120,19 @@ export const PlannedIncomeTable = ({
           plannedAmount: formData.plannedAmount,
           notes: formData.notes || null,
         });
-        (await toaster).show({
+        (await getToaster()).show({
           message: 'Planned income created',
           intent: Intent.SUCCESS,
           icon: 'tick',
         });
       }
       handleCloseDialog();
-    } catch {
-      (await toaster).show({
-        message: 'Failed to save planned income',
+    } catch (error: any) {
+      const isConflict = error?.response?.status === 409;
+      (await getToaster()).show({
+        message: isConflict
+          ? 'This income source already has a planned entry for this month. Edit the existing one instead.'
+          : 'Failed to save planned income',
         intent: Intent.DANGER,
         icon: 'error',
       });
@@ -147,7 +148,7 @@ export const PlannedIncomeTable = ({
     if (!deleteId) return;
     try {
       await deleteMutation.mutateAsync(deleteId);
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Planned income deleted',
         intent: Intent.SUCCESS,
         icon: 'tick',
@@ -155,7 +156,7 @@ export const PlannedIncomeTable = ({
       setIsDeleteAlertOpen(false);
       setDeleteId(null);
     } catch {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to delete planned income',
         intent: Intent.DANGER,
         icon: 'error',
@@ -166,13 +167,13 @@ export const PlannedIncomeTable = ({
   const handleCopyPrevious = async () => {
     try {
       const result = await copyMutation.mutateAsync({ month, year });
-      (await toaster).show({
+      (await getToaster()).show({
         message: `Copied ${result.length} planned income entries from previous month`,
         intent: Intent.SUCCESS,
         icon: 'tick',
       });
     } catch {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to copy from previous month',
         intent: Intent.DANGER,
         icon: 'error',
@@ -207,6 +208,9 @@ export const PlannedIncomeTable = ({
       ),
   );
 
+  const hasUnplannedSources = unplannedSources && unplannedSources.length > 0;
+  const hasAnySources = incomeSources && incomeSources.length > 0;
+
   if (isLoading) {
     return <div className={styles.section}>Loading planned income...</div>;
   }
@@ -229,7 +233,14 @@ export const PlannedIncomeTable = ({
             intent={Intent.PRIMARY}
             small
             onClick={() => handleOpenDialog()}
-            disabled={!incomeSources || incomeSources.length === 0}
+            disabled={!hasUnplannedSources}
+            title={
+              !hasAnySources
+                ? 'Create income sources in Settings first'
+                : !hasUnplannedSources
+                  ? 'All income sources already have planned entries for this month'
+                  : undefined
+            }
           />
         </div>
       </div>
@@ -246,7 +257,7 @@ export const PlannedIncomeTable = ({
                 icon="plus"
                 text="Add Planned Income"
                 onClick={() => handleOpenDialog()}
-                disabled={!incomeSources || incomeSources.length === 0}
+                disabled={!hasUnplannedSources}
               />
             }
           />
@@ -294,7 +305,16 @@ export const PlannedIncomeTable = ({
                     displayCurrency,
                   )}
                 </td>
-                <td>{getStatusTag(item.status)}</td>
+                <td>
+                  <div className={styles.statusCell}>
+                    {getStatusTag(item.status)}
+                    {item.linkedTransactionCount > 0 && (
+                      <Tag minimal icon="link">
+                        {item.linkedTransactionCount} tx
+                      </Tag>
+                    )}
+                  </div>
+                </td>
                 <td>
                   <div className={styles.actions}>
                     <Button

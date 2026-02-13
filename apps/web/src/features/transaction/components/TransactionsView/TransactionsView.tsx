@@ -28,6 +28,7 @@ import {
 } from '../../hooks/use-transactions';
 import { useCategories, Category } from '@/features/settings/hooks/use-categories';
 import { useIncomeSources, IncomeSource } from '@/features/settings/hooks/use-income-sources';
+import { usePlannedIncome, PlannedIncome } from '@/features/budget/hooks/use-planned-income';
 import { useDisplayCurrency } from '@/contexts/DisplayCurrencyContext';
 import { useLatestRates } from '@/hooks/use-latest-rates';
 import {
@@ -51,6 +52,7 @@ const EMPTY_FORM: CreateTransactionInput = {
   date: new Date().toISOString().split('T')[0],
   categoryId: null,
   incomeSourceId: null,
+  plannedIncomeId: null,
   merchantName: null,
   merchantLocation: null,
   mccCode: null,
@@ -62,7 +64,7 @@ export function TransactionsView() {
 
   const [filters, setFilters] = useState<QueryTransactionsInput>({
     page: 1,
-    pageSize: 20,
+    pageSize: 100,
     month: now.getMonth() + 1,
     year: now.getFullYear(),
   });
@@ -77,6 +79,16 @@ export function TransactionsView() {
   const { data: incomeSources } = useIncomeSources();
   const { displayCurrency } = useDisplayCurrency();
   const { data: latestRates } = useLatestRates();
+
+  // Fetch planned income for the current year (used in the transaction form dropdown)
+  const { data: plannedIncomeItems } = usePlannedIncome({ year: now.getFullYear() });
+  // Also fetch previous year in case we're in January and need December entries
+  const { data: plannedIncomePrevYear } = usePlannedIncome({ year: now.getFullYear() - 1 });
+
+  const allPlannedIncome = [
+    ...(plannedIncomePrevYear ?? []),
+    ...(plannedIncomeItems ?? []),
+  ];
   const createMutation = useCreateTransaction();
   const updateMutation = useUpdateTransaction();
   const deleteMutation = useDeleteTransaction();
@@ -97,6 +109,7 @@ export function TransactionsView() {
       date: tx.date,
       categoryId: tx.categoryId ?? null,
       incomeSourceId: tx.incomeSourceId ?? null,
+      plannedIncomeId: tx.plannedIncomeId ?? null,
       merchantName: tx.merchantName ?? null,
       merchantLocation: tx.merchantLocation ?? null,
       mccCode: tx.mccCode ?? null,
@@ -175,7 +188,7 @@ export function TransactionsView() {
     return cat ? cat.name : 'Uncategorized';
   };
 
-  const totalPages = data ? Math.ceil(data.total / (filters.pageSize || 20)) : 0;
+  const totalPages = data ? Math.ceil(data.total / (filters.pageSize || 100)) : 0;
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   if (isLoading) {
@@ -305,6 +318,22 @@ export function TransactionsView() {
           }
           leftIcon="search"
         />
+
+        <HTMLSelect
+          value={filters.pageSize?.toString() || '100'}
+          onChange={(e) =>
+            setFilters((prev) => ({
+              ...prev,
+              page: 1,
+              pageSize: parseInt(e.target.value),
+            }))
+          }
+        >
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="1000">1000</option>
+          <option value="100000">All</option>
+        </HTMLSelect>
       </div>
 
       {data && data.transactions.length === 0 ? (
@@ -559,24 +588,48 @@ export function TransactionsView() {
           </FormGroup>
 
           {REAL_INCOME_TYPES.includes(form.type as TransactionType) && (
-            <FormGroup label="Income Source" helperText="Link to an income source for tracking">
-              <HTMLSelect
-                value={form.incomeSourceId ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, incomeSourceId: e.target.value || null }))
-                }
-                fill
-              >
-                <option value="">None</option>
-                {incomeSources
-                  ?.filter((s: IncomeSource) => s.isActive)
-                  .map((source: IncomeSource) => (
-                    <option key={source.id} value={source.id}>
-                      {source.name} ({source.currency})
-                    </option>
-                  ))}
-              </HTMLSelect>
-            </FormGroup>
+            <>
+              <FormGroup label="Income Source" helperText="Link to an income source for tracking">
+                <HTMLSelect
+                  value={form.incomeSourceId ?? ''}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, incomeSourceId: e.target.value || null }))
+                  }
+                  fill
+                >
+                  <option value="">None</option>
+                  {incomeSources
+                    ?.filter((s: IncomeSource) => s.isActive)
+                    .map((source: IncomeSource) => (
+                      <option key={source.id} value={source.id}>
+                        {source.name} ({source.currency})
+                      </option>
+                    ))}
+                </HTMLSelect>
+              </FormGroup>
+
+              <FormGroup label="Planned Income" helperText="Link to a planned income entry to confirm receipt">
+                <HTMLSelect
+                  value={form.plannedIncomeId ?? ''}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, plannedIncomeId: e.target.value || null }))
+                  }
+                  fill
+                >
+                  <option value="">None</option>
+                  {allPlannedIncome
+                    .sort((a, b) => b.year - a.year || b.month - a.month)
+                    .map((pi: PlannedIncome) => {
+                      const monthName = new Date(pi.year, pi.month - 1, 1).toLocaleString('en-US', { month: 'short' });
+                      return (
+                        <option key={pi.id} value={pi.id}>
+                          {monthName} {pi.year} — {pi.incomeSource.name} ({formatCurrency(parseFloat(pi.plannedAmount), pi.incomeSource.currency)})
+                        </option>
+                      );
+                    })}
+                </HTMLSelect>
+              </FormGroup>
+            </>
           )}
 
           <FormGroup label="Merchant Name">

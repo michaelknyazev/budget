@@ -18,8 +18,8 @@ import {
   Text,
   Tag,
 } from '@blueprintjs/core';
-import { OverlayToaster } from '@blueprintjs/core';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { getToaster } from '@/lib/toaster';
 import { Currency } from '@budget/schemas';
 import {
   useLoans,
@@ -29,8 +29,6 @@ import {
 } from '../../hooks/use-loans';
 import { CreateLoanInput } from '@budget/schemas';
 import styles from './LoansView.module.scss';
-
-const toaster = OverlayToaster.createAsync({ position: 'top' });
 
 export const LoansView = () => {
   const { data: loans, isLoading } = useLoans();
@@ -105,14 +103,14 @@ export const LoansView = () => {
           id: editingLoan.id,
           input: formData,
         });
-        (await toaster).show({
+        (await getToaster()).show({
           message: 'Loan updated successfully',
           intent: Intent.SUCCESS,
           icon: 'tick',
         });
       } else {
         await createMutation.mutateAsync(formData);
-        (await toaster).show({
+        (await getToaster()).show({
           message: 'Loan created successfully',
           intent: Intent.SUCCESS,
           icon: 'tick',
@@ -120,7 +118,7 @@ export const LoansView = () => {
       }
       handleCloseDialog();
     } catch (error) {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to save loan',
         intent: Intent.DANGER,
         icon: 'error',
@@ -137,7 +135,7 @@ export const LoansView = () => {
     if (!deleteId) return;
     try {
       await deleteMutation.mutateAsync(deleteId);
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Loan deleted successfully',
         intent: Intent.SUCCESS,
         icon: 'tick',
@@ -145,7 +143,7 @@ export const LoansView = () => {
       setIsDeleteAlertOpen(false);
       setDeleteId(null);
     } catch (error) {
-      (await toaster).show({
+      (await getToaster()).show({
         message: 'Failed to delete loan',
         intent: Intent.DANGER,
         icon: 'error',

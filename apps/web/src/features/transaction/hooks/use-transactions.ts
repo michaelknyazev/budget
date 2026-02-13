@@ -46,6 +46,10 @@ export function useCreateTransaction() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['planned-income-comparison'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['yearly-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-report'] });
     },
   });
 }
@@ -59,6 +63,10 @@ export function useUpdateTransaction() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['planned-income-comparison'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['yearly-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-report'] });
     },
   });
 }
@@ -69,6 +77,10 @@ export function useDeleteTransaction() {
     mutationFn: (id: string) => apiInstance.delete(`/transaction/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['planned-income-comparison'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['yearly-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-report'] });
     },
   });
 }

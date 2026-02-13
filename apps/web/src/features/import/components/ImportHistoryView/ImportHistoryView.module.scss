@@ -1,0 +1,110 @@
+@use "@/styles/tools/toRem" as *;
+@use "@/styles/colors" as *;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: toRem(24px);
+}
+
+// ── Import list table ────────────────────────────────────────
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  font-size: toRem(13px);
+
+  th {
+    white-space: nowrap;
+  }
+}
+
+.clickableRow {
+  cursor: pointer;
+  transition: background-color 0.1s;
+
+  &:hover {
+    background-color: $c_accent-light;
+  }
+}
+
+.muted {
+  color: $c_title-gray;
+  font-size: toRem(12px);
+}
+
+.countCreated {
+  color: $income-color;
+  font-weight: 600;
+}
+
+.countSkipped {
+  color: $loan-color;
+  font-weight: 600;
+}
+
+.balanceParts {
+  display: flex;
+  gap: toRem(6px);
+  flex-wrap: wrap;
+}
+
+.balanceChip {
+  font-size: toRem(11px);
+  font-weight: 500;
+  background: $c_block-bg;
+  border: 1px solid $c_block-border;
+  border-radius: toRem(3px);
+  padding: toRem(1px) toRem(5px);
+  white-space: nowrap;
+}
+
+// ── Expanded skipped section ─────────────────────────────────
+
+.skippedSection {
+  padding: toRem(12px) toRem(16px);
+  background: $c_block-bg;
+  border: 1px solid $c_block-border;
+  border-radius: toRem(4px);
+  margin-top: toRem(8px);
+}
+
+.skippedHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: toRem(8px);
+
+  h4 {
+    margin: 0;
+    font-size: toRem(14px);
+    font-weight: 600;
+  }
+}
+
+.skippedTable {
+  width: 100%;
+  font-size: toRem(12px);
+}
+
+.rawDetails {
+  max-width: toRem(400px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ── Empty state ──────────────────────────────────────────────
+
+.emptyState {
+  text-align: center;
+  padding: toRem(48px) toRem(24px);
+  color: $c_title-gray;
+
+  p {
+    margin-top: toRem(8px);
+  }
+}
