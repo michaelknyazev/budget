@@ -66,6 +66,12 @@ export class Transaction {
   @ManyToOne('PlannedIncome', { nullable: true, deleteRule: 'set null', updateRule: 'cascade' })
   plannedIncome?: any | null;
 
+  @ManyToOne('BudgetTarget', { nullable: true, deleteRule: 'set null', updateRule: 'cascade' })
+  budgetTarget?: any | null;
+
+  @ManyToOne('Loan', { nullable: true, deleteRule: 'set null', updateRule: 'cascade' })
+  loan?: any | null;
+
   @ManyToOne('ExchangeRate', { nullable: true, deleteRule: 'set null', updateRule: 'cascade' })
   exchangeRate?: any | null;
 

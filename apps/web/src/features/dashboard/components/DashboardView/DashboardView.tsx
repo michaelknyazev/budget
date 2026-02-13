@@ -155,6 +155,15 @@ export function DashboardView() {
             {data ? formatCurrency(data.netIncome) : formatCurrency(0)}
           </div>
         </Card>
+
+        {data && data.depositBalance > 0 && (
+          <Card className={styles.summaryCard} elevation={0}>
+            <H4 className={styles.cardLabel}>Deposit Balance</H4>
+            <div className={`${styles.cardAmount} ${styles.income}`}>
+              {formatCurrency(data.depositBalance)}
+            </div>
+          </Card>
+        )}
       </div>
 
       {data && data.topCategories.length > 0 && (

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Transaction } from '@/transaction/entities/transaction.entity';
+import { ExchangeRate } from '@/exchange-rate/entities/exchange-rate.entity';
 import { BankImport } from '@/bank-import/entities/bank-import.entity';
 import { ExchangeRateService } from '@/exchange-rate/services/exchange-rate.service';
 import { SubscriptionService } from '@/subscription/services/subscription.service';
@@ -98,6 +99,10 @@ export class DashboardService {
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
 
+    const depositBalance = this.round(
+      await this.computeDepositBalance(userId, displayCurrency, new Date(year, month - 1, 15)),
+    );
+
     return {
       grossIncome: this.round(grossIncome),
       totalExpenses: this.round(totalExpenses),
@@ -108,6 +113,7 @@ export class DashboardService {
         name: c.name,
         amount: this.round(c.amount),
       })),
+      depositBalance,
     };
   }
 
@@ -123,13 +129,15 @@ export class DashboardService {
     const startDate = new Date(year, 0, 1);
     const endDate = new Date(year, 11, 31);
 
-    // Fetch actual transactions, planned income, and budget targets in parallel
+    // Fetch actual transactions (with linked exchange rates),
+    // planned income, and budget targets in parallel
     const [transactions, plannedIncomeItems, allBudgetTargets] =
       await Promise.all([
-        this.em.find(Transaction, {
-          user: userId,
-          date: { $gte: startDate, $lte: endDate },
-        }),
+        this.em.find(
+          Transaction,
+          { user: userId, date: { $gte: startDate, $lte: endDate } },
+          { populate: ['exchangeRate'] },
+        ),
         this.plannedIncomeService.findAll(userId, year),
         this.budgetTargetService.findAll(userId),
       ]);
@@ -144,6 +152,7 @@ export class DashboardService {
       grossIncome: number;
       totalExpenses: number;
       loanCost: number;
+      fxCost: number;
       plannedIncome: number;
       plannedExpenses: number;
       expensesByCurrency: Record<string, number>;
@@ -151,6 +160,7 @@ export class DashboardService {
       grossIncome: 0,
       totalExpenses: 0,
       loanCost: 0,
+      fxCost: 0,
       plannedIncome: 0,
       plannedExpenses: 0,
       expensesByCurrency: {
@@ -169,11 +179,12 @@ export class DashboardService {
       const txDate = transaction.date instanceof Date ? transaction.date : new Date(transaction.date);
       const monthIdx = txDate.getMonth(); // 0-based
 
-      const convertedAmount = await this.convert(
+      const convertedAmount = await this.convertTx(
         rawAmount,
         transaction.currency,
         displayCurrency,
         txDate,
+        transaction.exchangeRate,
       );
 
       const bucket = monthBuckets[monthIdx];
@@ -195,6 +206,17 @@ export class DashboardService {
 
       if (LOAN_COST_TYPES.includes(type)) {
         bucket.loanCost += convertedAmount;
+      }
+
+      // FX conversion net flow: captures the real cost of currency exchange.
+      // Inflows minus outflows in display currency. Negative = spread loss.
+      if (type === TransactionType.FX_CONVERSION) {
+        const direction = (transaction.metadata as Record<string, unknown>)?.direction;
+        if (direction === 'inflow') {
+          bucket.fxCost += convertedAmount;
+        } else {
+          bucket.fxCost -= convertedAmount;
+        }
       }
     }
 
@@ -236,8 +258,11 @@ export class DashboardService {
     }
 
     const months: YearlyMonthData[] = monthBuckets.map((bucket, idx) => {
+      // netIncome includes FX conversion cost — the real spread loss from
+      // currency conversions. Without this, multi-currency portfolios
+      // overstate savings by the cumulative bank spread.
       const netIncome =
-        bucket.grossIncome - bucket.totalExpenses - bucket.loanCost;
+        bucket.grossIncome - bucket.totalExpenses - bucket.loanCost + bucket.fxCost;
       const plannedNetIncome =
         bucket.plannedIncome - bucket.plannedExpenses;
       return {
@@ -276,57 +301,18 @@ export class DashboardService {
       ),
     };
 
-    // ── Starting balance ────────────────────────────────────────
-    // Sum of all account starting balances (from earliest import per account)
-    // plus net income from all transactions before Jan 1 of this year,
-    // minus the outstanding loan liability at year start.
-    //
-    // The account baseline includes deposit accounts as assets, but
-    // loans taken against those deposits are liabilities that must be
-    // subtracted to arrive at true net worth.
-    const accountBaseline = await this.getAccountBaseline(
-      userId,
-      displayCurrency,
-    );
-    const priorYearNetIncome = await this.getNetIncomeBefore(
-      userId,
-      startDate,
-      displayCurrency,
-    );
-    const priorLoanBalance = await this.getLoanBalanceBefore(
-      userId,
-      startDate,
-      displayCurrency,
-    );
-    const startingBalance = this.round(
-      accountBaseline + priorYearNetIncome - priorLoanBalance,
-    );
+    // ── Balance-based cumulative savings (≈ net worth) ─────────
+    // Compute actual account balances at each month-end from starting
+    // balances + all transaction flows (in original currencies), then
+    // subtract outstanding loan liability. This gives exact net worth
+    // without any FX formula error.
+    const { startingNetWorth, monthlyNetWorth } =
+      await this.computeBalanceBasedSavings(userId, year, displayCurrency);
 
-    // ── Per-month loan outstanding ───────────────────────────────
-    // Compute cumulative net loan balance (disbursed - repaid) at
-    // the end of each month in the year, so we can subtract it from
-    // cumulative savings.
-    const monthlyLoanChange = await this.getLoanBalanceByMonth(
-      userId,
-      year,
-      displayCurrency,
-    );
-
-    // Cumulative savings (≈ net worth): starting net worth + running net income
-    // minus the in-year cumulative loan balance change.
-    // startingBalance already subtracts the prior-year loan balance, so here
-    // we only need to subtract the in-year loan growth month by month.
-    const cumulativeSavings: number[] = [];
-    let running = startingBalance;
-    let inYearLoanCumulative = 0;
-    for (let i = 0; i < months.length; i++) {
-      running += months[i]!.netIncome;
-      inYearLoanCumulative += monthlyLoanChange[i] ?? 0;
-      cumulativeSavings.push(this.round(running - inYearLoanCumulative));
-    }
+    const startingBalance = startingNetWorth;
+    const cumulativeSavings = monthlyNetWorth;
 
     // Planned cumulative savings: starting balance + running planned net income
-    // (planned view doesn't account for loan changes — show clean planned net worth)
     const plannedCumulativeSavings: number[] = [];
     let plannedRunning = startingBalance;
     for (const m of months) {
@@ -363,13 +349,14 @@ export class DashboardService {
         user: userId,
         date: { $gte: startDate, $lte: endDate },
       },
-      { populate: ['category', 'incomeSource'] },
+      { populate: ['category', 'incomeSource', 'exchangeRate'] },
     );
 
     // Summary aggregation
     let grossIncome = 0;
     let totalExpenses = 0;
     let loanCost = 0;
+    let fxCost = 0;
 
     // Expenses grouped by original currency
     const expenseCurrencyMap = new Map<
@@ -393,11 +380,12 @@ export class DashboardService {
     for (const transaction of transactions) {
       const rawAmount = parseFloat(transaction.amount);
       const type = transaction.type as TransactionType;
-      const convertedAmount = await this.convert(
+      const convertedAmount = await this.convertTx(
         rawAmount,
         transaction.currency,
         displayCurrency,
         transaction.date,
+        transaction.exchangeRate,
       );
 
       if (REAL_INCOME_TYPES.includes(type)) {
@@ -449,32 +437,30 @@ export class DashboardService {
       if (LOAN_COST_TYPES.includes(type)) {
         loanCost += convertedAmount;
       }
+
+      if (type === TransactionType.FX_CONVERSION) {
+        const direction = (transaction.metadata as Record<string, unknown>)?.direction;
+        if (direction === 'inflow') {
+          fxCost += convertedAmount;
+        } else {
+          fxCost -= convertedAmount;
+        }
+      }
     }
 
-    const netIncome = grossIncome - totalExpenses - loanCost;
+    const netIncome = grossIncome - totalExpenses - loanCost + fxCost;
 
-    // Calculate previous months' savings (cumulative net worth before this month)
-    const previousSavings = await this.calculatePreviousSavings(
+    // Calculate previous months' savings using balance-based net worth
+    const previousSavings = await this.getNetWorthAtDate(
       userId,
-      month,
-      year,
+      new Date(year, month - 1, 1), // first day of this month
       displayCurrency,
     );
-
-    // Loan balance change during THIS month (must subtract from total savings)
-    const { startDate: monthStart, endDate: monthEnd } = this.getMonthRange(month, year);
-    const thisMonthLoanTxns = await this.em.find(Transaction, {
-      user: userId,
-      date: { $gte: monthStart, $lte: monthEnd },
-      type: { $in: [TransactionType.LOAN_DISBURSEMENT, TransactionType.LOAN_REPAYMENT] },
-    });
-    let thisMonthLoanChange = 0;
-    for (const tx of thisMonthLoanTxns) {
-      const raw = parseFloat(tx.amount);
-      const conv = await this.convert(raw, tx.currency, displayCurrency, tx.date);
-      thisMonthLoanChange +=
-        tx.type === TransactionType.LOAN_DISBURSEMENT ? conv : -conv;
-    }
+    const currentSavings = await this.getNetWorthAtDate(
+      userId,
+      new Date(year, month, 1), // first day of next month
+      displayCurrency,
+    );
 
     // Subscriptions total
     const subscriptions = await this.subscriptionService.findAll(userId);
@@ -551,8 +537,8 @@ export class DashboardService {
       },
       savings: {
         previous: this.round(previousSavings),
-        leftover: this.round(netIncome),
-        total: this.round(previousSavings + netIncome - thisMonthLoanChange),
+        leftover: this.round(currentSavings - previousSavings),
+        total: this.round(currentSavings),
       },
       expensesByCurrency,
       incomeBySource,
@@ -566,11 +552,187 @@ export class DashboardService {
         monthlyPayment: this.round(loanMonthlyPayment),
       },
       plannedIncome: comparison.items.length > 0 ? comparison.items : undefined,
+      depositBalance: this.round(
+        await this.computeDepositBalance(userId, displayCurrency, new Date(year, month - 1, 15)),
+      ),
     };
   }
 
   // ────────────────────────────────────────────────────────────────
   // Private helpers
+  // ────────────────────────────────────────────────────────────────
+
+  // ────────────────────────────────────────────────────────────────
+  // Balance-based net worth computation
+  // ────────────────────────────────────────────────────────────────
+
+  /**
+   * Compute net worth at each month-end of the given year from actual
+   * account balances. This is exact: starting_balance + all_flows (in
+   * original currencies) gives the true account balance. Only the final
+   * month-end totals are converted to the display currency.
+   */
+  private async computeBalanceBasedSavings(
+    userId: string,
+    year: number,
+    displayCurrency: string,
+  ): Promise<{ startingNetWorth: number; monthlyNetWorth: number[] }> {
+    // 1. Starting balances per currency (from earliest imports)
+    const startingBalances = await this.getStartingBalancesPerCurrency(userId);
+
+    // 2. Load ALL transactions ordered by date
+    const transactions = await this.em.find(
+      Transaction,
+      { user: userId },
+      { orderBy: { date: 'ASC' } },
+    );
+
+    // 3. Running per-currency balances and loan liability
+    const balances: Record<string, number> = { ...startingBalances };
+    const loans: Record<string, number> = {};
+
+    const yearStart = new Date(year, 0, 1);
+
+    // Process pre-year transactions
+    let txIdx = 0;
+    while (txIdx < transactions.length) {
+      const tx = transactions[txIdx]!;
+      const txDate = tx.date instanceof Date ? tx.date : new Date(tx.date);
+      if (txDate >= yearStart) break;
+      this.applyTxToBalances(tx, balances, loans);
+      txIdx++;
+    }
+
+    // Starting net worth (end of previous year)
+    const startingNetWorth = await this.balancesToNetWorth(
+      balances, loans, yearStart, displayCurrency,
+    );
+
+    // 4. Process each month, snapshot at month-end
+    const monthlyNetWorth: number[] = [];
+    for (let month = 0; month < 12; month++) {
+      const nextMonthStart = new Date(year, month + 1, 1);
+      const monthEnd = new Date(year, month + 1, 0); // last day
+
+      while (txIdx < transactions.length) {
+        const tx = transactions[txIdx]!;
+        const txDate = tx.date instanceof Date ? tx.date : new Date(tx.date);
+        if (txDate >= nextMonthStart) break;
+        this.applyTxToBalances(tx, balances, loans);
+        txIdx++;
+      }
+
+      monthlyNetWorth.push(
+        await this.balancesToNetWorth(balances, loans, monthEnd, displayCurrency),
+      );
+    }
+
+    return { startingNetWorth: this.round(startingNetWorth), monthlyNetWorth };
+  }
+
+  /**
+   * Compute net worth at a specific date (balance-based).
+   * Used by the monthly report for previous/current savings.
+   */
+  private async getNetWorthAtDate(
+    userId: string,
+    beforeDate: Date,
+    displayCurrency: string,
+  ): Promise<number> {
+    const startingBalances = await this.getStartingBalancesPerCurrency(userId);
+    const transactions = await this.em.find(
+      Transaction,
+      { user: userId, date: { $lt: beforeDate } },
+      { orderBy: { date: 'ASC' } },
+    );
+
+    const balances: Record<string, number> = { ...startingBalances };
+    const loans: Record<string, number> = {};
+
+    for (const tx of transactions) {
+      this.applyTxToBalances(tx, balances, loans);
+    }
+
+    return this.balancesToNetWorth(balances, loans, beforeDate, displayCurrency);
+  }
+
+  /**
+   * Get sum of starting balances per currency from earliest imports.
+   */
+  private async getStartingBalancesPerCurrency(
+    userId: string,
+  ): Promise<Record<string, number>> {
+    const imports = await this.em.find(
+      BankImport,
+      { bankAccount: { user: userId } },
+      { orderBy: { periodFrom: 'ASC' }, populate: ['bankAccount'] },
+    );
+
+    const seen = new Set<string>();
+    const balances: Record<string, number> = {};
+
+    for (const imp of imports) {
+      const accountId =
+        typeof imp.bankAccount === 'object'
+          ? (imp.bankAccount as any).id
+          : imp.bankAccount;
+      if (seen.has(accountId)) continue;
+      seen.add(accountId);
+
+      const sb = (imp.startingBalance || {}) as Record<string, number>;
+      for (const [cur, amount] of Object.entries(sb)) {
+        if (!amount) continue;
+        balances[cur] = (balances[cur] || 0) + amount;
+      }
+    }
+
+    return balances;
+  }
+
+  /** Apply a transaction to running per-currency balances and loan tracking */
+  private applyTxToBalances(
+    tx: Transaction,
+    balances: Record<string, number>,
+    loans: Record<string, number>,
+  ): void {
+    const amount = parseFloat(tx.amount);
+    const cur = tx.currency;
+    const direction = (tx.metadata as Record<string, unknown>)?.direction;
+
+    if (!balances[cur]) balances[cur] = 0;
+    if (!loans[cur]) loans[cur] = 0;
+
+    if (direction === 'inflow') {
+      balances[cur]! += amount;
+    } else {
+      balances[cur]! -= amount;
+    }
+
+    // Track loan liability separately (disbursement = new debt, repayment = paid off)
+    if (tx.type === TransactionType.LOAN_DISBURSEMENT) {
+      loans[cur]! += amount;
+    } else if (tx.type === TransactionType.LOAN_REPAYMENT) {
+      loans[cur]! -= amount;
+    }
+  }
+
+  /** Convert per-currency balances minus loans to a single display currency amount */
+  private async balancesToNetWorth(
+    balances: Record<string, number>,
+    loans: Record<string, number>,
+    date: Date,
+    displayCurrency: string,
+  ): Promise<number> {
+    let netWorth = 0;
+    for (const [cur, balance] of Object.entries(balances)) {
+      const loan = loans[cur] || 0;
+      const net = balance - loan;
+      if (Math.abs(net) < 0.005) continue;
+      netWorth += await this.convert(net, cur, displayCurrency, date);
+    }
+    return this.round(netWorth);
+  }
+
   // ────────────────────────────────────────────────────────────────
 
   /**
@@ -631,37 +793,48 @@ export class DashboardService {
     beforeDate: Date,
     displayCurrency: string,
   ): Promise<number> {
-    const transactions = await this.em.find(Transaction, {
-      user: userId,
-      date: { $lt: beforeDate },
-    });
+    const transactions = await this.em.find(
+      Transaction,
+      { user: userId, date: { $lt: beforeDate } },
+      { populate: ['exchangeRate'] },
+    );
 
     let income = 0;
     let expenses = 0;
     let loanCostTotal = 0;
+    let fxCost = 0;
 
     for (const transaction of transactions) {
       const rawAmount = parseFloat(transaction.amount);
       const type = transaction.type as TransactionType;
-      const convertedAmount = await this.convert(
+      const convertedAmount = await this.convertTx(
         rawAmount,
         transaction.currency,
         displayCurrency,
         transaction.date,
+        transaction.exchangeRate,
       );
 
       if (REAL_INCOME_TYPES.includes(type)) income += convertedAmount;
       if (REAL_EXPENSE_TYPES.includes(type)) expenses += convertedAmount;
       if (LOAN_COST_TYPES.includes(type)) loanCostTotal += convertedAmount;
+
+      if (type === TransactionType.FX_CONVERSION) {
+        const direction = (transaction.metadata as Record<string, unknown>)?.direction;
+        if (direction === 'inflow') {
+          fxCost += convertedAmount;
+        } else {
+          fxCost -= convertedAmount;
+        }
+      }
     }
 
-    return income - expenses - loanCostTotal;
+    return income - expenses - loanCostTotal + fxCost;
   }
 
   /**
-   * All-time previous savings (net worth): account baseline + net income
-   * from all transactions before the start of the given month/year,
-   * minus outstanding loan liability at that point.
+   * All-time previous savings: account baseline + net income from all
+   * transactions before the start of the given month/year.
    */
   private async calculatePreviousSavings(
     userId: string,
@@ -679,95 +852,9 @@ export class DashboardService {
       beforeDate,
       displayCurrency,
     );
-    const loanBalance = await this.getLoanBalanceBefore(
-      userId,
-      beforeDate,
-      displayCurrency,
-    );
-    return accountBaseline + priorNetIncome - loanBalance;
+    return accountBaseline + priorNetIncome;
   }
 
-  /**
-   * Outstanding loan principal (disbursed - repaid) from all transactions
-   * strictly before the given date. Positive = user owes money.
-   */
-  private async getLoanBalanceBefore(
-    userId: string,
-    beforeDate: Date,
-    displayCurrency: string,
-  ): Promise<number> {
-    const transactions = await this.em.find(Transaction, {
-      user: userId,
-      date: { $lt: beforeDate },
-      type: { $in: [TransactionType.LOAN_DISBURSEMENT, TransactionType.LOAN_REPAYMENT] },
-    });
-
-    let disbursed = 0;
-    let repaid = 0;
-
-    for (const transaction of transactions) {
-      const rawAmount = parseFloat(transaction.amount);
-      const convertedAmount = await this.convert(
-        rawAmount,
-        transaction.currency,
-        displayCurrency,
-        transaction.date,
-      );
-
-      if (transaction.type === TransactionType.LOAN_DISBURSEMENT) {
-        disbursed += convertedAmount;
-      } else {
-        repaid += convertedAmount;
-      }
-    }
-
-    return disbursed - repaid;
-  }
-
-  /**
-   * Net loan balance change per month (disbursed - repaid) for the given year.
-   * Returns an array of 12 numbers, one per month.
-   */
-  private async getLoanBalanceByMonth(
-    userId: string,
-    year: number,
-    displayCurrency: string,
-  ): Promise<number[]> {
-    const startDate = new Date(year, 0, 1);
-    const endDate = new Date(year, 11, 31);
-
-    const transactions = await this.em.find(Transaction, {
-      user: userId,
-      date: { $gte: startDate, $lte: endDate },
-      type: { $in: [TransactionType.LOAN_DISBURSEMENT, TransactionType.LOAN_REPAYMENT] },
-    });
-
-    const monthlyChange = new Array(12).fill(0) as number[];
-
-    for (const transaction of transactions) {
-      const rawAmount = parseFloat(transaction.amount);
-      const txDate =
-        transaction.date instanceof Date
-          ? transaction.date
-          : new Date(transaction.date);
-      const monthIdx = txDate.getMonth();
-
-      const convertedAmount = await this.convert(
-        rawAmount,
-        transaction.currency,
-        displayCurrency,
-        txDate,
-      );
-
-      if (transaction.type === TransactionType.LOAN_DISBURSEMENT) {
-        monthlyChange[monthIdx]! += convertedAmount;
-      } else {
-        monthlyChange[monthIdx]! -= convertedAmount;
-      }
-    }
-
-    return monthlyChange;
-  }
 
   // ────────────────────────────────────────────────────────────────
   // Balance Reconciliation
@@ -883,6 +970,49 @@ export class DashboardService {
   // Private helpers
   // ────────────────────────────────────────────────────────────────
 
+  /**
+   * Convert using the transaction's linked exchange rate when available.
+   * This ensures we use the actual bank rate (from statement descriptions)
+   * rather than the NBG API rate, eliminating FX spread discrepancies.
+   *
+   * Falls back to date-based lookup if no linked rate exists.
+   */
+  private async convertTx(
+    amount: number,
+    from: string,
+    to: string,
+    date: Date,
+    linkedRate?: ExchangeRate | null,
+  ): Promise<number> {
+    if (from === to) return amount;
+
+    try {
+      // If we have a linked rate for the source currency, use it directly
+      if (linkedRate && from !== Currency.GEL) {
+        const fromRateToGel = parseFloat(linkedRate.rateToGel);
+
+        if (to === Currency.GEL) {
+          // Simple: amount * rateToGel
+          return amount * fromRateToGel;
+        }
+
+        // Cross-currency: need the target currency's rate too
+        const toRate = await this.exchangeRateService.getRate(to, date);
+        return (amount * fromRateToGel) / toRate;
+      }
+
+      // GEL source or no linked rate: use date-based lookup
+      return await this.exchangeRateService.convertAmount(amount, from, to, date);
+    } catch {
+      this.logger.warn(
+        { from, to, date: date.toISOString() },
+        'Exchange rate not found, returning unconverted amount',
+      );
+      return amount;
+    }
+  }
+
+  /** Legacy convert method for non-transaction amounts (subscriptions, loans, etc.) */
   private async convert(
     amount: number,
     from: string,
@@ -898,7 +1028,6 @@ export class DashboardService {
         date,
       );
     } catch {
-      // If no rate found, return unconverted amount with a warning
       this.logger.warn(
         { from, to, date: date.toISOString() },
         'Exchange rate not found, returning unconverted amount',
@@ -912,6 +1041,39 @@ export class DashboardService {
       startDate: new Date(year, month - 1, 1),
       endDate: new Date(year, month, 0),
     };
+  }
+
+  /**
+   * Compute total deposit balance from DEPOSIT-type transactions via raw SQL
+   * aggregate, then convert per-currency totals to the display currency.
+   *
+   * Only counts transactions from bank accounts with account_type = 'DEPOSIT'
+   * to avoid double-counting (the same deposit event appears on checking and
+   * savings accounts as outflow/transfer transactions).
+   */
+  private async computeDepositBalance(
+    userId: string,
+    displayCurrency: string,
+    referenceDate: Date,
+  ): Promise<number> {
+    const rows: { total: string; currency: string }[] = await this.em.execute(
+      `SELECT COALESCE(SUM(t.amount::numeric), 0) as total, t.currency
+       FROM transaction t
+       JOIN bank_import bi ON bi.id = t.bank_import_id
+       JOIN bank_account ba ON ba.id = bi.bank_account_id
+       WHERE t.user_id = ? AND t.type = 'DEPOSIT'
+         AND ba.account_type = 'DEPOSIT'
+       GROUP BY t.currency`,
+      [userId],
+    );
+
+    let balance = 0;
+    for (const row of rows) {
+      const amount = parseFloat(row.total);
+      if (amount === 0) continue;
+      balance += await this.convert(amount, row.currency, displayCurrency, referenceDate);
+    }
+    return balance;
   }
 
   private round(value: number): number {

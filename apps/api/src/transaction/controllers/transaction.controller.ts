@@ -110,6 +110,8 @@ export class TransactionController {
       categoryId: transaction.category?.id || null,
       incomeSourceId: transaction.incomeSource?.id || null,
       plannedIncomeId: transaction.plannedIncome?.id || null,
+      budgetTargetId: transaction.budgetTarget?.id || null,
+      loanId: transaction.loan?.id || null,
       bankImportId: transaction.bankImport?.id || null,
       importHash: transaction.importHash || null,
       rateToGel: transaction.exchangeRate ? parseFloat(transaction.exchangeRate.rateToGel) : null,

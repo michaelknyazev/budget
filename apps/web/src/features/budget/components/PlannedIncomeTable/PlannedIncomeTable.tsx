@@ -66,6 +66,18 @@ export const PlannedIncomeTable = ({
     notes: '',
   });
 
+  // Income sources not yet planned for this month
+  const unplannedSources = incomeSources?.filter(
+    (source) =>
+      source.isActive &&
+      !comparison?.items.some(
+        (item) => item.incomeSourceId === source.id,
+      ),
+  );
+
+  const hasUnplannedSources = unplannedSources && unplannedSources.length > 0;
+  const hasAnySources = incomeSources && incomeSources.length > 0;
+
   const handleOpenDialog = (item?: {
     plannedIncomeId: string;
     incomeSourceId: string;
@@ -84,7 +96,7 @@ export const PlannedIncomeTable = ({
     } else {
       setEditingId(null);
       setFormData({
-        incomeSourceId: incomeSources?.[0]?.id ?? '',
+        incomeSourceId: unplannedSources?.[0]?.id ?? '',
         plannedAmount: 0,
         notes: '',
       });
@@ -198,18 +210,6 @@ export const PlannedIncomeTable = ({
         return <Tag minimal>Pending</Tag>;
     }
   };
-
-  // Income sources not yet planned for this month
-  const unplannedSources = incomeSources?.filter(
-    (source) =>
-      source.isActive &&
-      !comparison?.items.some(
-        (item) => item.incomeSourceId === source.id,
-      ),
-  );
-
-  const hasUnplannedSources = unplannedSources && unplannedSources.length > 0;
-  const hasAnySources = incomeSources && incomeSources.length > 0;
 
   if (isLoading) {
     return <div className={styles.section}>Loading planned income...</div>;

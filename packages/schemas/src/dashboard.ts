@@ -133,6 +133,7 @@ export const MonthlyReportResponseSchema = z.object({
       }),
     )
     .optional(),
+  depositBalance: z.number().describe('Total deposit balance computed from DEPOSIT-type transactions'),
 });
 
 export type MonthlyReportResponse = z.infer<typeof MonthlyReportResponseSchema>;

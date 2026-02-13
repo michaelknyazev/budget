@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { EntityManager, FilterQuery } from '@mikro-orm/postgresql';
 import { Transaction } from '../entities/transaction.entity';
+import { LoanService } from '@/loan/services/loan.service';
 import {
   CreateTransactionInput,
   UpdateTransactionInput,
@@ -9,11 +10,19 @@ import {
   TransactionType,
 } from '@budget/schemas';
 
+const LOAN_REPAYMENT_TYPES: TransactionType[] = [
+  TransactionType.LOAN_REPAYMENT,
+  TransactionType.LOAN_INTEREST,
+];
+
 @Injectable()
 export class TransactionService {
   private readonly logger = new Logger(TransactionService.name);
 
-  constructor(private readonly em: EntityManager) {}
+  constructor(
+    private readonly em: EntityManager,
+    private readonly loanService: LoanService,
+  ) {}
 
   async findAll(userId: string): Promise<Transaction[]> {
     return this.em.find(Transaction, { user: userId }, { populate: ['category'] });
@@ -23,7 +32,7 @@ export class TransactionService {
     const transaction = await this.em.findOne(
       Transaction,
       { id },
-      { populate: ['category', 'bankImport', 'incomeSource', 'plannedIncome'] },
+      { populate: ['category', 'bankImport', 'incomeSource', 'plannedIncome', 'budgetTarget', 'loan'] },
     );
     if (!transaction) {
       throw new NotFoundException({ message: 'Transaction not found', id });
@@ -58,7 +67,7 @@ export class TransactionService {
       limit: query.pageSize,
       offset: (query.page - 1) * query.pageSize,
       orderBy: { date: 'DESC' },
-      populate: ['category', 'incomeSource', 'plannedIncome', 'exchangeRate'],
+      populate: ['category', 'incomeSource', 'plannedIncome', 'budgetTarget', 'loan', 'exchangeRate'],
     });
 
     return { transactions, total };
@@ -75,17 +84,27 @@ export class TransactionService {
       category: data.categoryId || null,
       incomeSource: data.incomeSourceId || null,
       plannedIncome: data.plannedIncomeId || null,
+      budgetTarget: data.budgetTargetId || null,
+      loan: data.loanId || null,
     });
 
     this.em.persist(transaction);
     await this.em.flush();
-    this.logger.log({ transactionId: transaction.id }, 'Transaction created');
 
+    // Auto-adjust loan amountLeft when linking a repayment
+    if (data.loanId && LOAN_REPAYMENT_TYPES.includes(data.type as TransactionType)) {
+      await this.adjustLoanBalance(data.loanId, -data.amount);
+    }
+
+    this.logger.log({ transactionId: transaction.id }, 'Transaction created');
     return transaction;
   }
 
   async update(id: string, data: UpdateTransactionInput): Promise<Transaction> {
     const transaction = await this.findById(id);
+    const oldLoanId = transaction.loan?.id || null;
+    const txType = (data.type ?? transaction.type) as TransactionType;
+    const txAmount = data.amount ?? parseFloat(transaction.amount);
 
     const updateData: Partial<Transaction> = {};
     if (data.title !== undefined) updateData.title = data.title;
@@ -101,17 +120,54 @@ export class TransactionService {
       updateData.incomeSource = data.incomeSourceId || null;
     if (data.plannedIncomeId !== undefined)
       updateData.plannedIncome = data.plannedIncomeId || null;
+    if (data.budgetTargetId !== undefined)
+      updateData.budgetTarget = data.budgetTargetId || null;
+    if (data.loanId !== undefined)
+      updateData.loan = data.loanId || null;
 
     this.em.assign(transaction, updateData);
     await this.em.flush();
-    this.logger.log({ transactionId: id }, 'Transaction updated');
 
+    // Auto-adjust loan amountLeft when loanId changes for repayment types
+    if (data.loanId !== undefined && LOAN_REPAYMENT_TYPES.includes(txType)) {
+      const newLoanId = data.loanId || null;
+      if (oldLoanId !== newLoanId) {
+        // Restore old loan balance
+        if (oldLoanId) {
+          await this.adjustLoanBalance(oldLoanId, txAmount);
+        }
+        // Reduce new loan balance
+        if (newLoanId) {
+          await this.adjustLoanBalance(newLoanId, -txAmount);
+        }
+      }
+    }
+
+    this.logger.log({ transactionId: id }, 'Transaction updated');
     return transaction;
   }
 
   async delete(id: string): Promise<void> {
     const transaction = await this.findById(id);
+
+    // Restore loan balance if deleting a linked repayment
+    const loanId = transaction.loan?.id;
+    if (loanId && LOAN_REPAYMENT_TYPES.includes(transaction.type as TransactionType)) {
+      await this.adjustLoanBalance(loanId, parseFloat(transaction.amount));
+    }
+
     await this.em.removeAndFlush(transaction);
     this.logger.log({ transactionId: id }, 'Transaction deleted');
+  }
+
+  private async adjustLoanBalance(loanId: string, delta: number): Promise<void> {
+    try {
+      const loan = await this.loanService.findById(loanId);
+      const newAmount = Math.max(0, parseFloat(loan.amountLeft) + delta);
+      await this.loanService.update(loanId, { amountLeft: newAmount });
+      this.logger.log({ loanId, delta, newAmount }, 'Loan balance adjusted');
+    } catch (error) {
+      this.logger.warn({ loanId, delta }, 'Failed to adjust loan balance');
+    }
   }
 }

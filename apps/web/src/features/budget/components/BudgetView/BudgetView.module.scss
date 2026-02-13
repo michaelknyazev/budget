@@ -1,5 +1,4 @@
 @use "@/styles/tools/toRem" as *;
-@use "@/styles/colors" as *;
 
 .container {
   display: flex;
@@ -13,15 +12,47 @@
   align-items: center;
 }
 
-.table {
-  width: 100%;
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: toRem(16px);
 }
 
-.typeText {
-  text-transform: capitalize;
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: toRem(12px);
+}
+
+.headerActions {
+  display: flex;
+  gap: toRem(8px);
+}
+
+.table {
+  width: 100%;
 }
 
 .actions {
   display: flex;
   gap: toRem(8px);
+}
+
+.statusCell {
+  display: flex;
+  align-items: center;
+  gap: toRem(6px);
+}
+
+.totalsRow {
+  font-weight: 600;
+
+  td {
+    border-top: 2px solid var(--pt-divider-black) !important;
+  }
+}
+
+.emptyState {
+  padding: toRem(24px) 0;
 }

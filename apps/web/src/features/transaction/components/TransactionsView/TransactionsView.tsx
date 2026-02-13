@@ -29,6 +29,8 @@ import {
 import { useCategories, Category } from '@/features/settings/hooks/use-categories';
 import { useIncomeSources, IncomeSource } from '@/features/settings/hooks/use-income-sources';
 import { usePlannedIncome, PlannedIncome } from '@/features/budget/hooks/use-planned-income';
+import { useBudgetTargets, BudgetTarget } from '@/features/budget/hooks/use-budget-targets';
+import { useLoans, Loan } from '@/features/loan/hooks/use-loans';
 import { useDisplayCurrency } from '@/contexts/DisplayCurrencyContext';
 import { useLatestRates } from '@/hooks/use-latest-rates';
 import {
@@ -38,6 +40,7 @@ import {
   OUTFLOW_TYPES,
   LOAN_COST_TYPES,
   REAL_INCOME_TYPES,
+  REAL_EXPENSE_TYPES,
   CreateTransactionInput,
   TransactionResponse,
   QueryTransactionsInput,
@@ -53,6 +56,8 @@ const EMPTY_FORM: CreateTransactionInput = {
   categoryId: null,
   incomeSourceId: null,
   plannedIncomeId: null,
+  budgetTargetId: null,
+  loanId: null,
   merchantName: null,
   merchantLocation: null,
   mccCode: null,
@@ -89,6 +94,19 @@ export function TransactionsView() {
     ...(plannedIncomePrevYear ?? []),
     ...(plannedIncomeItems ?? []),
   ];
+
+  // Fetch budget targets for the planned expense dropdown
+  const { data: budgetTargetItems } = useBudgetTargets({ year: now.getFullYear() });
+  const { data: budgetTargetPrevYear } = useBudgetTargets({ year: now.getFullYear() - 1 });
+
+  const allBudgetTargets = [
+    ...(budgetTargetPrevYear ?? []),
+    ...(budgetTargetItems ?? []),
+  ];
+
+  // Fetch loans for the loan dropdown
+  const { data: loans } = useLoans();
+
   const createMutation = useCreateTransaction();
   const updateMutation = useUpdateTransaction();
   const deleteMutation = useDeleteTransaction();
@@ -110,6 +128,8 @@ export function TransactionsView() {
       categoryId: tx.categoryId ?? null,
       incomeSourceId: tx.incomeSourceId ?? null,
       plannedIncomeId: tx.plannedIncomeId ?? null,
+      budgetTargetId: tx.budgetTargetId ?? null,
+      loanId: tx.loanId ?? null,
       merchantName: tx.merchantName ?? null,
       merchantLocation: tx.merchantLocation ?? null,
       mccCode: tx.mccCode ?? null,
@@ -630,6 +650,49 @@ export function TransactionsView() {
                 </HTMLSelect>
               </FormGroup>
             </>
+          )}
+
+          {REAL_EXPENSE_TYPES.includes(form.type as TransactionType) && (
+            <FormGroup label="Planned Expense" helperText="Link to a planned expense entry to track spending">
+              <HTMLSelect
+                value={form.budgetTargetId ?? ''}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, budgetTargetId: e.target.value || null }))
+                }
+                fill
+              >
+                <option value="">None</option>
+                {allBudgetTargets
+                  .sort((a, b) => b.year - a.year || b.month - a.month)
+                  .map((bt: BudgetTarget) => {
+                    const monthName = new Date(bt.year, bt.month - 1, 1).toLocaleString('en-US', { month: 'short' });
+                    return (
+                      <option key={bt.id} value={bt.id}>
+                        {monthName} {bt.year} — {bt.name} ({formatCurrency(parseFloat(bt.targetAmount), bt.currency)})
+                      </option>
+                    );
+                  })}
+              </HTMLSelect>
+            </FormGroup>
+          )}
+
+          {[TransactionType.LOAN_REPAYMENT, TransactionType.LOAN_DISBURSEMENT, TransactionType.LOAN_INTEREST].includes(form.type as TransactionType) && (
+            <FormGroup label="Loan" helperText="Link to a loan entry to track repayments">
+              <HTMLSelect
+                value={form.loanId ?? ''}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, loanId: e.target.value || null }))
+                }
+                fill
+              >
+                <option value="">None</option>
+                {loans?.map((loan: Loan) => (
+                  <option key={loan.id} value={loan.id}>
+                    {loan.title} ({formatCurrency(parseFloat(loan.amountLeft), loan.currency)})
+                  </option>
+                ))}
+              </HTMLSelect>
+            </FormGroup>
           )}
 
           <FormGroup label="Merchant Name">

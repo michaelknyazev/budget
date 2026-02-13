@@ -48,6 +48,18 @@ export const CreateTransactionSchema = z.object({
     .nullable()
     .optional()
     .describe('Linked planned income entry'),
+  budgetTargetId: z
+    .string()
+    .uuid()
+    .nullable()
+    .optional()
+    .describe('Linked planned expense entry'),
+  loanId: z
+    .string()
+    .uuid()
+    .nullable()
+    .optional()
+    .describe('Linked loan entry'),
 });
 
 export type CreateTransactionInput = z.infer<typeof CreateTransactionSchema>;
@@ -102,6 +114,8 @@ export const TransactionResponseSchema = z.object({
   categoryId: z.string().uuid().nullable(),
   incomeSourceId: z.string().uuid().nullable(),
   plannedIncomeId: z.string().uuid().nullable(),
+  budgetTargetId: z.string().uuid().nullable(),
+  loanId: z.string().uuid().nullable(),
   bankImportId: z.string().uuid().nullable(),
   importHash: z.string().nullable(),
   rateToGel: z.number().nullable().describe('Exchange rate to GEL for this transaction date'),

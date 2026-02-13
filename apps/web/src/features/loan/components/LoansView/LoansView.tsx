@@ -26,6 +26,7 @@ import {
   useCreateLoan,
   useUpdateLoan,
   useDeleteLoan,
+  useRecalculateLoans,
 } from '../../hooks/use-loans';
 import { CreateLoanInput } from '@budget/schemas';
 import styles from './LoansView.module.scss';
@@ -35,6 +36,7 @@ export const LoansView = () => {
   const createMutation = useCreateLoan();
   const updateMutation = useUpdateLoan();
   const deleteMutation = useDeleteLoan();
+  const recalculateMutation = useRecalculateLoans();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
@@ -151,6 +153,25 @@ export const LoansView = () => {
     }
   };
 
+  const handleRecalculate = async () => {
+    try {
+      const result = await recalculateMutation.mutateAsync();
+      (await getToaster()).show({
+        message: result.created > 0
+          ? `Created ${result.created} loan(s) from disbursement transactions`
+          : 'No new loans to create — all disbursements are already linked',
+        intent: result.created > 0 ? Intent.SUCCESS : Intent.NONE,
+        icon: result.created > 0 ? 'tick' : 'info-sign',
+      });
+    } catch (error) {
+      (await getToaster()).show({
+        message: 'Failed to recalculate loans',
+        intent: Intent.DANGER,
+        icon: 'error',
+      });
+    }
+  };
+
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -178,12 +199,20 @@ export const LoansView = () => {
       <PageHeader
         title="Loans"
         actions={
-          <Button
-            intent={Intent.PRIMARY}
-            icon="plus"
-            text="Add Loan"
-            onClick={() => handleOpenDialog()}
-          />
+          <>
+            <Button
+              icon="refresh"
+              text="Recalculate"
+              onClick={handleRecalculate}
+              loading={recalculateMutation.isPending}
+            />
+            <Button
+              intent={Intent.PRIMARY}
+              icon="plus"
+              text="Add Loan"
+              onClick={() => handleOpenDialog()}
+            />
+          </>
         }
       />
 
