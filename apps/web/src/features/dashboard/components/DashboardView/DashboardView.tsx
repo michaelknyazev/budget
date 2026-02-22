@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Card,
   H4,
@@ -11,12 +11,22 @@ import {
   Section,
   Tag,
   Intent,
+  NonIdealState,
 } from '@blueprintjs/core';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { useDisplayCurrency } from '@/contexts/DisplayCurrencyContext';
 import { useMonthlySummary } from '../../hooks/use-monthly-summary';
 import { useYearlySummary } from '@/features/reports/hooks/use-yearly-summary';
+import { useTransactions } from '@/features/transaction/hooks/use-transactions';
+import { useCategories, Category } from '@/features/settings/hooks/use-categories';
+import { useLatestRates } from '@/hooks/use-latest-rates';
+import {
+  TransactionType,
+  INFLOW_TYPES,
+  OUTFLOW_TYPES,
+  LOAN_COST_TYPES,
+} from '@budget/schemas';
 import styles from './DashboardView.module.scss';
 
 const MONTH_NAMES = [
@@ -53,6 +63,7 @@ export function DashboardView() {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
+  const [day, setDay] = useState(now.getDate());
   const { displayCurrency: currency } = useDisplayCurrency();
   const router = useRouter();
 
@@ -61,6 +72,15 @@ export function DashboardView() {
     year,
     currency,
   );
+  const { data: dailyData, isLoading: dailyLoading } = useTransactions({
+    day,
+    month,
+    year,
+    page: 1,
+    pageSize: 1000,
+  });
+  const { data: categories } = useCategories();
+  const { data: latestRates } = useLatestRates();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -86,23 +106,87 @@ export function DashboardView() {
     return prefix + fmtCompact(diff);
   };
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    if (direction === 'prev') {
-      if (month === 1) {
-        setMonth(12);
-        setYear(year - 1);
-      } else {
-        setMonth(month - 1);
+  const getCategoryName = (categoryId: string | null): string => {
+    if (!categoryId || !categories) return 'Uncategorized';
+    const cat = categories.find((c: Category) => c.id === categoryId);
+    return cat ? cat.name : 'Uncategorized';
+  };
+
+  const getAmountDisplay = (
+    amount: number,
+    type: string,
+    txCurrency: string,
+    metadata?: Record<string, unknown> | null,
+  ) => {
+    const txType = type as TransactionType;
+    const isLoanCost = LOAN_COST_TYPES.includes(txType);
+    let isInflow = INFLOW_TYPES.includes(txType);
+    if (!INFLOW_TYPES.includes(txType) && !OUTFLOW_TYPES.includes(txType)) {
+      isInflow = metadata?.direction === 'inflow';
+    }
+    const prefix = isInflow ? '+' : '-';
+    const formatted = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: txCurrency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+    return { prefix, formatted, isInflow, isLoanCost };
+  };
+
+  const getAmountIntent = (isInflow: boolean, isLoanCost: boolean): Intent => {
+    if (isLoanCost) return Intent.WARNING;
+    return isInflow ? Intent.SUCCESS : Intent.DANGER;
+  };
+
+  const dailyTotals = useMemo(() => {
+    if (!dailyData?.transactions.length) return null;
+    const displayRate = latestRates?.[currency] ?? 1;
+    let inflow = 0;
+    let outflow = 0;
+    for (const tx of dailyData.transactions) {
+      const txType = tx.type as TransactionType;
+      let isInflow = INFLOW_TYPES.includes(txType);
+      if (!INFLOW_TYPES.includes(txType) && !OUTFLOW_TYPES.includes(txType)) {
+        isInflow = tx.metadata?.direction === 'inflow';
       }
-    } else {
-      if (month === 12) {
-        setMonth(1);
-        setYear(year + 1);
+      const rateToGel = tx.rateToGel ?? (latestRates?.[tx.currency] ?? 1);
+      const converted = (tx.amount * rateToGel) / displayRate;
+      if (isInflow) {
+        inflow += converted;
       } else {
-        setMonth(month + 1);
+        outflow += converted;
       }
     }
+    return { inflow, outflow, net: inflow - outflow };
+  }, [dailyData, latestRates, currency]);
+
+  const navigateDay = (direction: 'prev' | 'next') => {
+    const current = new Date(Date.UTC(year, month - 1, day));
+    const delta = direction === 'prev' ? -1 : 1;
+    current.setUTCDate(current.getUTCDate() + delta);
+    setDay(current.getUTCDate());
+    setMonth(current.getUTCMonth() + 1);
+    setYear(current.getUTCFullYear());
   };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    let newMonth = month;
+    let newYear = year;
+    if (direction === 'prev') {
+      if (month === 1) { newMonth = 12; newYear = year - 1; }
+      else { newMonth = month - 1; }
+    } else {
+      if (month === 12) { newMonth = 1; newYear = year + 1; }
+      else { newMonth = month + 1; }
+    }
+    const maxDay = new Date(Date.UTC(newYear, newMonth, 0)).getUTCDate();
+    setMonth(newMonth);
+    setYear(newYear);
+    if (day > maxDay) setDay(maxDay);
+  };
+
+  const dayLabel = `${day} ${MONTH_SHORT[month - 1]} ${year}`;
 
   if (isLoading) {
     return (
@@ -224,6 +308,90 @@ export function DashboardView() {
           </div>
         </Section>
       )}
+
+      {/* Daily Transactions */}
+      <Section
+        title="Daily Transactions"
+        icon="timeline-events"
+        rightElement={
+          <ButtonGroup>
+            <Button icon="chevron-left" small onClick={() => navigateDay('prev')} />
+            <Button minimal small>
+              {dayLabel}
+            </Button>
+            <Button icon="chevron-right" small onClick={() => navigateDay('next')} />
+          </ButtonGroup>
+        }
+      >
+        {dailyLoading ? (
+          <Spinner size={30} />
+        ) : !dailyData?.transactions.length ? (
+          <NonIdealState
+            icon="bank-account"
+            title="No transactions"
+            description={`No transactions on ${dayLabel}.`}
+          />
+        ) : (
+          <div className={styles.tableScroll}>
+            <HTMLTable bordered striped className={styles.dailyTable}>
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th className={styles.alignRight}>Amount</th>
+                  <th>Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dailyData.transactions.map((tx) => {
+                  const info = getAmountDisplay(tx.amount, tx.type, tx.currency, tx.metadata);
+                  return (
+                    <tr key={tx.id}>
+                      <td>{tx.title}</td>
+                      <td>
+                        <Tag minimal>{getCategoryName(tx.categoryId)}</Tag>
+                      </td>
+                      <td className={styles.alignRight}>
+                        <Tag intent={getAmountIntent(info.isInflow, info.isLoanCost)}>
+                          {info.prefix}{info.formatted}
+                        </Tag>
+                      </td>
+                      <td>
+                        <Tag minimal>{tx.type.replace(/_/g, ' ')}</Tag>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {dailyTotals && (
+                <tfoot>
+                  <tr className={styles.totalRow}>
+                    <td>
+                      <strong>Total ({dailyData.transactions.length})</strong>
+                    </td>
+                    <td className={styles.alignRight}>
+                      <Tag intent={Intent.SUCCESS}>
+                        +{formatCurrency(dailyTotals.inflow)}
+                      </Tag>
+                    </td>
+                    <td className={styles.alignRight}>
+                      <Tag intent={Intent.DANGER}>
+                        -{formatCurrency(dailyTotals.outflow)}
+                      </Tag>
+                    </td>
+                    <td className={styles.alignRight}>
+                      <Tag intent={dailyTotals.net >= 0 ? Intent.SUCCESS : Intent.DANGER}>
+                        {dailyTotals.net >= 0 ? '+' : '-'}
+                        {formatCurrency(Math.abs(dailyTotals.net))}
+                      </Tag>
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </HTMLTable>
+          </div>
+        )}
+      </Section>
 
       {/* Yearly Planned vs Actual Summary Cards */}
       {yearlyData && (

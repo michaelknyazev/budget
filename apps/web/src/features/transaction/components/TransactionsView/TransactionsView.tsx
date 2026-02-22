@@ -477,22 +477,23 @@ export function TransactionsView() {
                     <td>
                       <strong>Page Total</strong>
                     </td>
-                    <td colSpan={2} className={styles.alignRight}>
+                    <td className={styles.alignRight}>
                       <Tag minimal>{displayCurrency}</Tag>
                     </td>
-                    <td>
+                    <td className={styles.alignRight}>
+                      <Tag intent={Intent.SUCCESS}>
+                        +{formatCurrency(convertedInflow, displayCurrency)}
+                      </Tag>
+                    </td>
+                    <td className={styles.alignRight}>
+                      <Tag intent={Intent.DANGER}>
+                        -{formatCurrency(convertedOutflow, displayCurrency)}
+                      </Tag>
+                    </td>
+                    <td colSpan={3} className={styles.alignRight}>
                       <Tag intent={net >= 0 ? Intent.SUCCESS : Intent.DANGER}>
                         {net >= 0 ? '+' : '-'}{formatCurrency(Math.abs(net), displayCurrency)}
                       </Tag>
-                    </td>
-                    <td colSpan={3} className={styles.totalDetails}>
-                      <span className={styles.incomeText}>
-                        +{formatCurrency(convertedInflow, displayCurrency)}
-                      </span>
-                      {' / '}
-                      <span className={styles.expenseText}>
-                        -{formatCurrency(convertedOutflow, displayCurrency)}
-                      </span>
                     </td>
                   </tr>
                 </tfoot>
