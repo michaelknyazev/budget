@@ -20,8 +20,10 @@ import {
   H5,
 } from '@blueprintjs/core';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { PageLoader } from '@/components/shared/PageLoader';
 import { Divider } from '@blueprintjs/core';
 import { getToaster } from '@/lib/toaster';
+import { useDisplayCurrency } from '@/contexts/DisplayCurrencyContext';
 import { Currency } from '@budget/schemas';
 import type { CreateBudgetTargetInput } from '@budget/schemas';
 import { PlannedIncomeTable } from '../PlannedIncomeTable/PlannedIncomeTable';
@@ -41,7 +43,7 @@ export const BudgetView = () => {
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
 
-  const displayCurrency = Currency.USD;
+  const { displayCurrency } = useDisplayCurrency();
 
   const { data: comparison, isLoading } = useBudgetTargetComparison({
     month: selectedMonth,
@@ -217,11 +219,7 @@ export const BudgetView = () => {
   const years = Array.from({ length: 10 }, (_, i) => currentDate.getFullYear() - 5 + i);
 
   if (isLoading) {
-    return (
-      <div className={styles.container}>
-        <Text>Loading...</Text>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
@@ -337,11 +335,16 @@ export const BudgetView = () => {
                       </div>
                     </td>
                     <td>
-                      <ProgressBar
-                        value={Math.min(percentUsed / 100, 1)}
-                        intent={progressIntent}
-                        stripes={false}
-                      />
+                      <div className={styles.progressCell}>
+                        <ProgressBar
+                          value={Math.min(percentUsed / 100, 1)}
+                          intent={progressIntent}
+                          stripes={false}
+                        />
+                        <span className={styles.progressLabel} data-intent={progressIntent}>
+                          {Math.round(percentUsed)}%
+                        </span>
+                      </div>
                     </td>
                     <td>
                       <div className={styles.actions}>

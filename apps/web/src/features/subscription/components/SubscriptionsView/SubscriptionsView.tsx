@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import {
   Button,
-  Card,
   Dialog,
   DialogBody,
   DialogFooter,
@@ -18,6 +17,7 @@ import {
   Tag,
 } from '@blueprintjs/core';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { CardGrid, ItemCard } from '@/components/shared/CardGrid';
 import { Currency } from '@budget/schemas';
 import {
   useSubscriptions,
@@ -159,41 +159,44 @@ export function SubscriptionsView() {
           }
         />
       ) : (
-        <div className={styles.grid}>
+        <CardGrid>
           {subscriptions.map((sub: any) => (
-            <Card
+            <ItemCard
               key={sub.id}
               interactive
               onClick={() => handleOpenDialog(sub)}
-              className={styles.card}
             >
-              <div className={styles.cardHeader}>
+              <ItemCard.Header>
                 <strong>{sub.title}</strong>
                 <Tag intent={sub.isActive ? Intent.SUCCESS : Intent.NONE} minimal>
                   {sub.isActive ? 'Active' : 'Inactive'}
                 </Tag>
-              </div>
-              <div className={styles.cardAmount}>
-                {formatAmount(sub.amount, sub.currency)}
-              </div>
-              <div className={styles.cardDetails}>
-                <span>Day {sub.dayOfMonth}</span>
-                {sub.owner && <span>{sub.owner}</span>}
-              </div>
-              <Button
-                small
-                minimal
-                icon="trash"
-                intent={Intent.DANGER}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDeleteId(sub.id);
-                  setIsDeleteOpen(true);
-                }}
-              />
-            </Card>
+              </ItemCard.Header>
+              <ItemCard.Body>
+                <div className={styles.cardAmount}>
+                  {formatAmount(sub.amount, sub.currency)}
+                </div>
+                <div className={styles.cardDetails}>
+                  <span>Day {sub.dayOfMonth}</span>
+                  {sub.owner && <span>{sub.owner}</span>}
+                </div>
+              </ItemCard.Body>
+              <ItemCard.Actions>
+                <Button
+                  small
+                  minimal
+                  icon="trash"
+                  intent={Intent.DANGER}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteId(sub.id);
+                    setIsDeleteOpen(true);
+                  }}
+                />
+              </ItemCard.Actions>
+            </ItemCard>
           ))}
-        </div>
+        </CardGrid>
       )}
 
       <Dialog

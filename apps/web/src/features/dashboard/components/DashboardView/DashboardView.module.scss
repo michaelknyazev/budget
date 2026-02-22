@@ -8,63 +8,6 @@
   gap: toRem(24px);
 }
 
-.summaryGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: toRem(16px);
-
-  @include tablet-down {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @include mobile {
-    grid-template-columns: 1fr;
-  }
-}
-
-.summaryCard {
-  padding: toRem(20px);
-}
-
-.cardLabel {
-  margin: 0 0 toRem(8px) 0;
-  font-size: toRem(13px);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: $c_title-gray;
-}
-
-.cardAmount {
-  font-size: toRem(28px);
-  font-weight: 600;
-  margin: 0;
-  line-height: 1.2;
-
-  @include mobile {
-    font-size: toRem(24px);
-  }
-
-  &.income {
-    color: $income-color;
-  }
-
-  &.expense {
-    color: $expense-color;
-  }
-
-  &.loan {
-    color: $loan-color;
-  }
-
-  &.primary {
-    color: $c_accent;
-  }
-
-  &.warning {
-    color: $intent-warning;
-  }
-}
 
 .categories {
   margin-top: toRem(8px);
@@ -73,16 +16,18 @@
 .categoryList {
   display: flex;
   flex-direction: column;
-  gap: toRem(12px);
 }
 
 .categoryItem {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: toRem(8px) toRem(12px);
+  padding: toRem(10px) toRem(16px);
   border-radius: toRem(6px);
+  border-bottom: 1px solid #f0f2f4;
   transition: background 0.15s ease;
+
+  &:last-child { border-bottom: none; }
 
   &:hover {
     background: $c_accent-light;

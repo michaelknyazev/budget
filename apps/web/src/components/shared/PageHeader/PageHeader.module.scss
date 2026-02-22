@@ -6,7 +6,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: toRem(16px);
+  padding-bottom: toRem(20px);
   border-bottom: 1px solid $c_header-border;
 
   @include mobile {

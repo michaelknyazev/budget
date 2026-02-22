@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import {
-  Card,
-  H4,
   H5,
   HTMLTable,
   Button,
@@ -15,6 +13,8 @@ import {
   Icon,
 } from '@blueprintjs/core';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { SummaryCard, SummaryCardGrid } from '@/components/shared/SummaryCard';
+import { CategoryPieChart } from '@/components/shared/Charts';
 import { useDisplayCurrency } from '@/contexts/DisplayCurrencyContext';
 import { useMonthlyReport } from '../../hooks/use-monthly-report';
 import styles from './MonthlyReportView.module.scss';
@@ -101,36 +101,12 @@ export function MonthlyReportView() {
 
       {data && (
         <>
-          {/* Summary Cards */}
-          <div className={styles.summaryGrid}>
-            <Card className={styles.summaryCard} elevation={0}>
-              <H4 className={styles.cardLabel}>Gross Income</H4>
-              <div className={`${styles.cardAmount} ${styles.income}`}>
-                {fmt(data.summary.grossIncome)}
-              </div>
-            </Card>
-
-            <Card className={styles.summaryCard} elevation={0}>
-              <H4 className={styles.cardLabel}>Total Expenses</H4>
-              <div className={`${styles.cardAmount} ${styles.expense}`}>
-                {fmt(data.summary.totalExpenses)}
-              </div>
-            </Card>
-
-            <Card className={styles.summaryCard} elevation={0}>
-              <H4 className={styles.cardLabel}>Loan Cost</H4>
-              <div className={`${styles.cardAmount} ${styles.loan}`}>
-                {fmt(data.summary.loanCost)}
-              </div>
-            </Card>
-
-            <Card className={styles.summaryCard} elevation={0}>
-              <H4 className={styles.cardLabel}>Net Income</H4>
-              <div className={`${styles.cardAmount} ${styles.primary}`}>
-                {fmt(data.summary.netIncome)}
-              </div>
-            </Card>
-          </div>
+          <SummaryCardGrid>
+            <SummaryCard label="Gross Income" amount={fmt(data.summary.grossIncome)} intent="income" />
+            <SummaryCard label="Total Expenses" amount={fmt(data.summary.totalExpenses)} intent="expense" />
+            <SummaryCard label="Loan Cost" amount={fmt(data.summary.loanCost)} intent="loan" />
+            <SummaryCard label="Net Income" amount={fmt(data.summary.netIncome)} intent="primary" />
+          </SummaryCardGrid>
 
           {/* Two-column grid for detailed sections */}
           <div className={styles.detailGrid}>
@@ -312,24 +288,27 @@ export function MonthlyReportView() {
             {/* Top Expense Categories */}
             <Section title="Top Expense Categories" icon="tag">
               {data.topCategories.length > 0 ? (
-                <HTMLTable bordered striped className={styles.fullTable}>
-                  <thead>
-                    <tr>
-                      <th>Category</th>
-                      <th className={styles.alignRight}>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.topCategories.map((cat, idx) => (
-                      <tr key={idx}>
-                        <td>{cat.name}</td>
-                        <td className={`${styles.alignRight} ${styles.expense}`}>
-                          {fmt(cat.amount)}
-                        </td>
+                <>
+                  <CategoryPieChart categories={data.topCategories} formatter={fmt} />
+                  <HTMLTable bordered striped className={styles.fullTable}>
+                    <thead>
+                      <tr>
+                        <th>Category</th>
+                        <th className={styles.alignRight}>Amount</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </HTMLTable>
+                    </thead>
+                    <tbody>
+                      {data.topCategories.map((cat, idx) => (
+                        <tr key={idx}>
+                          <td>{cat.name}</td>
+                          <td className={`${styles.alignRight} ${styles.expense}`}>
+                            {fmt(cat.amount)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </HTMLTable>
+                </>
               ) : (
                 <div className={styles.emptyText}>
                   No categorized expenses this month

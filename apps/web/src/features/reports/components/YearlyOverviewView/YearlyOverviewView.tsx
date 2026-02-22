@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import {
-  Card,
-  H4,
   HTMLTable,
   Button,
   ButtonGroup,
@@ -13,6 +11,8 @@ import {
   Intent,
 } from '@blueprintjs/core';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { SummaryCard, SummaryCardGrid } from '@/components/shared/SummaryCard';
+import { SavingsLineChart, YearlyBarChart } from '@/components/shared/Charts';
 import { useDisplayCurrency } from '@/contexts/DisplayCurrencyContext';
 import { useYearlySummary } from '../../hooks/use-yearly-summary';
 import styles from './YearlyOverviewView.module.scss';
@@ -82,35 +82,21 @@ export function YearlyOverviewView() {
 
       {data && (
         <>
-          {/* Summary Totals */}
-          <div className={styles.summaryGrid}>
-            <Card className={styles.summaryCard} elevation={0}>
-              <H4 className={styles.cardLabel}>Total Gross Income</H4>
-              <div className={`${styles.cardAmount} ${styles.income}`}>
-                {fmt(data.totals.grossIncome)}
-              </div>
-            </Card>
+          <SummaryCardGrid>
+            <SummaryCard label="Total Gross Income" amount={fmt(data.totals.grossIncome)} intent="income" />
+            <SummaryCard label="Total Expenses" amount={fmt(data.totals.totalExpenses)} intent="expense" />
+            <SummaryCard label="Total Loan Cost" amount={fmt(data.totals.loanCost)} intent="loan" />
+            <SummaryCard label="Total Net Income" amount={fmt(data.totals.netIncome)} intent="primary" />
+          </SummaryCardGrid>
 
-            <Card className={styles.summaryCard} elevation={0}>
-              <H4 className={styles.cardLabel}>Total Expenses</H4>
-              <div className={`${styles.cardAmount} ${styles.expense}`}>
-                {fmt(data.totals.totalExpenses)}
-              </div>
-            </Card>
-
-            <Card className={styles.summaryCard} elevation={0}>
-              <H4 className={styles.cardLabel}>Total Loan Cost</H4>
-              <div className={`${styles.cardAmount} ${styles.loan}`}>
-                {fmt(data.totals.loanCost)}
-              </div>
-            </Card>
-
-            <Card className={styles.summaryCard} elevation={0}>
-              <H4 className={styles.cardLabel}>Total Net Income</H4>
-              <div className={`${styles.cardAmount} ${styles.primary}`}>
-                {fmt(data.totals.netIncome)}
-              </div>
-            </Card>
+          {/* Charts */}
+          <div className={styles.chartsGrid}>
+            <Section title="Income vs Expenses" icon="chart">
+              <YearlyBarChart months={data.months} formatter={fmt} />
+            </Section>
+            <Section title="Cumulative Savings" icon="trending-up">
+              <SavingsLineChart cumulativeSavings={data.cumulativeSavings} formatter={fmt} />
+            </Section>
           </div>
 
           {/* Monthly Breakdown Table — Planned vs Actual */}

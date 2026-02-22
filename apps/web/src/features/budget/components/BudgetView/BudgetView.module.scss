@@ -56,3 +56,30 @@
 .emptyState {
   padding: toRem(24px) 0;
 }
+
+.progressCell {
+  display: flex;
+  align-items: center;
+  gap: toRem(8px);
+  min-width: toRem(120px);
+}
+
+.progressLabel {
+  font-size: toRem(12px);
+  font-weight: 600;
+  white-space: nowrap;
+  min-width: toRem(36px);
+  text-align: right;
+
+  &[data-intent="success"] {
+    color: var(--pt-intent-success-color);
+  }
+
+  &[data-intent="warning"] {
+    color: var(--pt-intent-warning-color);
+  }
+
+  &[data-intent="danger"] {
+    color: var(--pt-intent-danger-color);
+  }
+}

@@ -13,24 +13,6 @@
   flex-wrap: wrap;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(toRem(300px), 1fr));
-  gap: toRem(16px);
-}
-
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: toRem(12px);
-}
-
-.cardHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
 .cardAmount {
   font-size: toRem(20px);
   font-weight: 600;

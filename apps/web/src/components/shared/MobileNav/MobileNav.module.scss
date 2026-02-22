@@ -25,7 +25,7 @@
   flex-direction: column;
   align-items: center;
   gap: toRem(2px);
-  padding: toRem(6px) toRem(8px);
+  padding: toRem(6px) toRem(12px);
   border: none;
   background: transparent;
   color: $c_title-gray;
@@ -44,4 +44,56 @@
 
 .label {
   white-space: nowrap;
+}
+
+.moreOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 29;
+
+  @include mobile {
+    display: block;
+  }
+}
+
+.moreMenu {
+  position: fixed;
+  bottom: toRem(60px);
+  right: toRem(8px);
+  background: #ffffff;
+  border-radius: toRem(10px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: toRem(8px);
+  display: flex;
+  flex-direction: column;
+  gap: toRem(2px);
+  min-width: toRem(180px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + toRem(8px));
+}
+
+.moreItem {
+  display: flex;
+  align-items: center;
+  gap: toRem(10px);
+  padding: toRem(10px) toRem(12px);
+  border: none;
+  background: transparent;
+  border-radius: toRem(6px);
+  color: $c_title-gray;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: toRem(14px);
+  font-weight: 500;
+  transition: background 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+  text-align: left;
+
+  &:hover,
+  &.active {
+    background: rgba($c_accent, 0.08);
+    color: $c_accent;
+  }
 }
