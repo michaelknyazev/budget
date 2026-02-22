@@ -15,6 +15,8 @@ import {
 } from '@blueprintjs/core';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { SummaryCard, SummaryCardGrid } from '@/components/shared/SummaryCard';
+import { YearlyBarChart } from '@/components/shared/Charts';
 import { useDisplayCurrency } from '@/contexts/DisplayCurrencyContext';
 import { useMonthlySummary } from '../../hooks/use-monthly-summary';
 import { useYearlySummary } from '@/features/reports/hooks/use-yearly-summary';
@@ -211,88 +213,70 @@ export function DashboardView() {
         }
       />
 
-      <div className={styles.summaryGrid}>
-        <Card className={styles.summaryCard} elevation={0}>
-          <H4 className={styles.cardLabel}>Gross Income</H4>
-          <div className={`${styles.cardAmount} ${styles.income}`}>
-            {data ? formatCurrency(data.grossIncome) : formatCurrency(0)}
-          </div>
-        </Card>
-
-        <Card className={styles.summaryCard} elevation={0}>
-          <H4 className={styles.cardLabel}>Total Expenses</H4>
-          <div className={`${styles.cardAmount} ${styles.expense}`}>
-            {data ? formatCurrency(data.totalExpenses) : formatCurrency(0)}
-          </div>
-        </Card>
-
-        <Card className={styles.summaryCard} elevation={0}>
-          <H4 className={styles.cardLabel}>Loan Cost</H4>
-          <div className={`${styles.cardAmount} ${styles.loan}`}>
-            {data ? formatCurrency(data.loanCost) : formatCurrency(0)}
-          </div>
-        </Card>
-
-        <Card className={styles.summaryCard} elevation={0}>
-          <H4 className={styles.cardLabel}>Net Income</H4>
-          <div className={`${styles.cardAmount} ${styles.primary}`}>
-            {data ? formatCurrency(data.netIncome) : formatCurrency(0)}
-          </div>
-        </Card>
+      <SummaryCardGrid>
+        <SummaryCard
+          label="Gross Income"
+          amount={data ? formatCurrency(data.grossIncome) : formatCurrency(0)}
+          intent="income"
+        />
+        <SummaryCard
+          label="Total Expenses"
+          amount={data ? formatCurrency(data.totalExpenses) : formatCurrency(0)}
+          intent="expense"
+        />
+        <SummaryCard
+          label="Loan Cost"
+          amount={data ? formatCurrency(data.loanCost) : formatCurrency(0)}
+          intent="loan"
+        />
+        <SummaryCard
+          label="Net Income"
+          amount={data ? formatCurrency(data.netIncome) : formatCurrency(0)}
+          intent="primary"
+        />
 
         {data && data.depositBalance > 0 && (
-          <Card className={styles.summaryCard} elevation={0}>
-            <H4 className={styles.cardLabel}>Deposit Balance</H4>
-            <div className={`${styles.cardAmount} ${styles.income}`}>
-              {formatCurrency(data.depositBalance)}
-            </div>
-          </Card>
+          <SummaryCard
+            label="Deposit Balance"
+            amount={formatCurrency(data.depositBalance)}
+            intent="income"
+          />
         )}
 
-        <Card className={styles.summaryCard} elevation={0}>
-          <H4 className={styles.cardLabel}>Current Balance</H4>
-          <div className={`${styles.cardAmount} ${styles.primary}`}>
-            {data ? formatCurrency(data.currentBalance) : formatCurrency(0)}
-          </div>
-        </Card>
+        <SummaryCard
+          label="Current Balance"
+          amount={data ? formatCurrency(data.currentBalance) : formatCurrency(0)}
+          intent="primary"
+        />
 
         {data && data.totalLoanAmount > 0 && (
-          <Card className={styles.summaryCard} elevation={0}>
-            <H4 className={styles.cardLabel}>Loan Amount</H4>
-            <div className={`${styles.cardAmount} ${styles.loan}`}>
-              {formatCurrency(data.totalLoanAmount)}
-            </div>
-          </Card>
+          <SummaryCard
+            label="Loan Amount"
+            amount={formatCurrency(data.totalLoanAmount)}
+            intent="loan"
+          />
         )}
 
         {data && data.untrackedIncome > 0 && (
-          <Card
-            className={styles.summaryCard}
-            elevation={0}
+          <SummaryCard
+            label="Untracked Income"
+            amount={formatCurrency(data.untrackedIncome)}
+            intent="warning"
             interactive
             onClick={() => router.push('/transactions/untracked-income')}
-          >
-            <H4 className={styles.cardLabel}>Untracked Income</H4>
-            <div className={`${styles.cardAmount} ${styles.warning}`}>
-              {formatCurrency(data.untrackedIncome)}
-            </div>
-          </Card>
+          />
         )}
 
         {data && data.untrackedExpenses > 0 && (
-          <Card
-            className={styles.summaryCard}
-            elevation={0}
+          <SummaryCard
+            label="Untracked Expenses"
+            amount={formatCurrency(data.untrackedExpenses)}
+            intent="warning"
             interactive
             onClick={() => router.push('/transactions/untracked-expenses')}
-          >
-            <H4 className={styles.cardLabel}>Untracked Expenses</H4>
-            <div className={`${styles.cardAmount} ${styles.warning}`}>
-              {formatCurrency(data.untrackedExpenses)}
-            </div>
-          </Card>
+          />
         )}
-      </div>
+      </SummaryCardGrid>
 
       {data && data.topCategories.length > 0 && (
         <Section className={styles.categories} title="Top Categories" icon="tag">
@@ -366,22 +350,21 @@ export function DashboardView() {
               {dailyTotals && (
                 <tfoot>
                   <tr className={styles.totalRow}>
-                    <td>
+                    <td colSpan={2}>
                       <strong>Total ({dailyData.transactions.length})</strong>
                     </td>
                     <td className={styles.alignRight}>
                       <Tag intent={Intent.SUCCESS}>
                         +{formatCurrency(dailyTotals.inflow)}
                       </Tag>
-                    </td>
-                    <td className={styles.alignRight}>
+                      {' '}
                       <Tag intent={Intent.DANGER}>
                         -{formatCurrency(dailyTotals.outflow)}
                       </Tag>
                     </td>
                     <td className={styles.alignRight}>
                       <Tag intent={dailyTotals.net >= 0 ? Intent.SUCCESS : Intent.DANGER}>
-                        {dailyTotals.net >= 0 ? '+' : '-'}
+                        Net: {dailyTotals.net >= 0 ? '+' : '-'}
                         {formatCurrency(Math.abs(dailyTotals.net))}
                       </Tag>
                     </td>
@@ -482,6 +465,13 @@ export function DashboardView() {
               </div>
             </Card>
           </div>
+        </Section>
+      )}
+
+      {/* Income vs Expenses Chart */}
+      {yearlyData && (
+        <Section title={`${year} Income vs Expenses`} icon="chart">
+          <YearlyBarChart months={yearlyData.months} formatter={fmtCompact} />
         </Section>
       )}
 

@@ -11,12 +11,12 @@
     "codegen": "orval"
   },
   "dependencies": {
-    "@budget/schemas": "workspace:*",
     "@blueprintjs/core": "^5",
-    "@blueprintjs/icons": "^5",
     "@blueprintjs/datetime2": "^2",
+    "@blueprintjs/icons": "^5",
     "@blueprintjs/select": "^5",
     "@blueprintjs/table": "^5",
+    "@budget/schemas": "workspace:*",
     "@tanstack/react-query": "^5",
     "axios": "^1",
     "better-auth": "^1",
@@ -24,6 +24,7 @@
     "normalize.css": "^8",
     "react": "^19",
     "react-dom": "^19",
+    "recharts": "^3.7.0",
     "zod": "^3.24"
   },
   "devDependencies": {

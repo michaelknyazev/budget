@@ -37,7 +37,7 @@ $sidebar-collapsed-width: 60px;
 
 .main {
   @include container(1280px);
-  padding: toRem(24px);
+  padding: toRem(32px);
   flex: 1;
 
   @include mobile {

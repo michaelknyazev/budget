@@ -20,6 +20,8 @@ import {
   SegmentedControl,
 } from '@blueprintjs/core';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { PageLoader } from '@/components/shared/PageLoader';
+import { CardGrid, ItemCard } from '@/components/shared/CardGrid';
 import { getToaster } from '@/lib/toaster';
 import { Currency } from '@budget/schemas';
 import {
@@ -217,11 +219,7 @@ export const LoansView = () => {
   const displayCurrency = activeLoans[0]?.currency || Currency.USD;
 
   if (isLoading) {
-    return (
-      <div className={styles.container}>
-        <Text>Loading...</Text>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
@@ -291,23 +289,22 @@ export const LoansView = () => {
           }
         />
       ) : (
-        <div className={styles.loansGrid}>
+        <CardGrid>
           {filteredLoans.map((loan) => (
-            <Card
+            <ItemCard
               key={loan.id}
-              className={styles.loanCard}
               interactive
               onClick={() => handleOpenDialog(loan)}
             >
-              <div className={styles.cardHeader}>
+              <ItemCard.Header>
                 <H3 className={styles.cardTitle}>{loan.title}</H3>
                 {loan.isRepaid && (
                   <Tag intent={Intent.SUCCESS} minimal>
                     Repaid
                   </Tag>
                 )}
-              </div>
-              <div className={styles.cardContent}>
+              </ItemCard.Header>
+              <ItemCard.Body>
                 <div className={styles.amountRow}>
                   <Text className={styles.amountLabel}>Remaining:</Text>
                   <Tag intent={loan.isRepaid ? Intent.SUCCESS : Intent.DANGER} large>
@@ -326,8 +323,8 @@ export const LoansView = () => {
                     Loan Number: {loan.loanNumber}
                   </Text>
                 )}
-              </div>
-              <div className={styles.cardActions}>
+              </ItemCard.Body>
+              <ItemCard.Actions>
                 <Button
                   intent={Intent.DANGER}
                   icon="trash"
@@ -340,10 +337,10 @@ export const LoansView = () => {
                 >
                   Delete
                 </Button>
-              </div>
-            </Card>
+              </ItemCard.Actions>
+            </ItemCard>
           ))}
-        </div>
+        </CardGrid>
       )}
 
       <Dialog

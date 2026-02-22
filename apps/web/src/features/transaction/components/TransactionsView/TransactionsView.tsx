@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   HTMLTable,
   Button,
@@ -18,7 +18,7 @@ import {
   NumericInput,
   Alert,
 } from '@blueprintjs/core';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/shared/PageHeader';
 import {
   useTransactions,
@@ -65,14 +65,45 @@ const EMPTY_FORM: CreateTransactionInput = {
 
 export function TransactionsView() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const now = new Date();
 
-  const [filters, setFilters] = useState<QueryTransactionsInput>({
-    page: 1,
-    pageSize: 100,
-    month: now.getMonth() + 1,
-    year: now.getFullYear(),
+  const [filters, setFilters] = useState<QueryTransactionsInput>(() => {
+    const month = searchParams.get('month');
+    const year = searchParams.get('year');
+    const type = searchParams.get('type');
+    const currency = searchParams.get('currency');
+    const categoryId = searchParams.get('categoryId');
+    const merchantName = searchParams.get('merchant');
+    const pageSize = searchParams.get('pageSize');
+    const page = searchParams.get('page');
+
+    return {
+      page: page ? parseInt(page) : 1,
+      pageSize: pageSize ? parseInt(pageSize) : 100,
+      month: month ? parseInt(month) : now.getMonth() + 1,
+      year: year ? parseInt(year) : now.getFullYear(),
+      type: (type || undefined) as any,
+      currency: (currency || undefined) as any,
+      categoryId: categoryId || undefined,
+      merchantName: merchantName || undefined,
+    };
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (filters.month) params.set('month', String(filters.month));
+    if (filters.year) params.set('year', String(filters.year));
+    if (filters.type) params.set('type', filters.type);
+    if (filters.currency) params.set('currency', filters.currency);
+    if (filters.categoryId) params.set('categoryId', filters.categoryId);
+    if (filters.merchantName) params.set('merchant', filters.merchantName);
+    if (filters.pageSize && filters.pageSize !== 100) params.set('pageSize', String(filters.pageSize));
+    if (filters.page && filters.page > 1) params.set('page', String(filters.page));
+
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : '/transactions', { scroll: false });
+  }, [filters, router]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<TransactionResponse | null>(null);
@@ -242,126 +273,147 @@ export function TransactionsView() {
       />
 
       <div className={styles.filters}>
-        <HTMLSelect
-          value={filters.month?.toString() || ''}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              page: 1,
-              month: e.target.value ? parseInt(e.target.value) : undefined,
-            }))
-          }
-        >
-          <option value="">All Months</option>
-          {Array.from({ length: 12 }, (_, i) => (
-            <option key={i + 1} value={i + 1}>
-              {new Date(2000, i, 1).toLocaleString('en-US', { month: 'long' })}
-            </option>
-          ))}
-        </HTMLSelect>
-
-        <HTMLSelect
-          value={filters.year?.toString() || ''}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              page: 1,
-              year: e.target.value ? parseInt(e.target.value) : undefined,
-            }))
-          }
-        >
-          <option value="">All Years</option>
-          {Array.from({ length: now.getFullYear() - 2023 }, (_, i) => now.getFullYear() - i).map(
-            (y) => (
-              <option key={y} value={y}>
-                {y}
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Month</label>
+          <HTMLSelect
+            value={filters.month?.toString() || ''}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                page: 1,
+                month: e.target.value ? parseInt(e.target.value) : undefined,
+              }))
+            }
+          >
+            <option value="">All Months</option>
+            {Array.from({ length: 12 }, (_, i) => (
+              <option key={i + 1} value={i + 1}>
+                {new Date(2000, i, 1).toLocaleString('en-US', { month: 'long' })}
               </option>
-            ),
-          )}
-        </HTMLSelect>
+            ))}
+          </HTMLSelect>
+        </div>
 
-        <HTMLSelect
-          value={filters.type || ''}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              page: 1,
-              type: (e.target.value || undefined) as any,
-            }))
-          }
-        >
-          <option value="">All Types</option>
-          {Object.values(TransactionType).map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </HTMLSelect>
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Year</label>
+          <HTMLSelect
+            value={filters.year?.toString() || ''}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                page: 1,
+                year: e.target.value ? parseInt(e.target.value) : undefined,
+              }))
+            }
+          >
+            <option value="">All Years</option>
+            {Array.from({ length: now.getFullYear() - 2023 }, (_, i) => now.getFullYear() - i).map(
+              (y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ),
+            )}
+          </HTMLSelect>
+        </div>
 
-        <HTMLSelect
-          value={filters.currency || ''}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              page: 1,
-              currency: (e.target.value || undefined) as any,
-            }))
-          }
-        >
-          <option value="">All Currencies</option>
-          {Object.values(Currency).map((curr) => (
-            <option key={curr} value={curr}>
-              {curr}
-            </option>
-          ))}
-        </HTMLSelect>
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Type</label>
+          <HTMLSelect
+            value={filters.type || ''}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                page: 1,
+                type: (e.target.value || undefined) as any,
+              }))
+            }
+          >
+            <option value="">All Types</option>
+            {Object.values(TransactionType).map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </HTMLSelect>
+        </div>
 
-        <HTMLSelect
-          value={filters.categoryId || ''}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              page: 1,
-              categoryId: e.target.value || undefined,
-            }))
-          }
-        >
-          <option value="">All Categories</option>
-          {categories?.map((cat: Category) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
-            </option>
-          ))}
-        </HTMLSelect>
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Currency</label>
+          <HTMLSelect
+            value={filters.currency || ''}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                page: 1,
+                currency: (e.target.value || undefined) as any,
+              }))
+            }
+          >
+            <option value="">All Currencies</option>
+            {Object.values(Currency).map((curr) => (
+              <option key={curr} value={curr}>
+                {curr}
+              </option>
+            ))}
+          </HTMLSelect>
+        </div>
 
-        <InputGroup
-          placeholder="Search merchant..."
-          value={filters.merchantName || ''}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              page: 1,
-              merchantName: e.target.value || undefined,
-            }))
-          }
-          leftIcon="search"
-        />
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Category</label>
+          <HTMLSelect
+            value={filters.categoryId || ''}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                page: 1,
+                categoryId: e.target.value || undefined,
+              }))
+            }
+          >
+            <option value="">All Categories</option>
+            {categories?.map((cat: Category) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </HTMLSelect>
+        </div>
 
-        <HTMLSelect
-          value={filters.pageSize?.toString() || '100'}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              page: 1,
-              pageSize: parseInt(e.target.value),
-            }))
-          }
-        >
-          <option value="50">50</option>
-          <option value="100">100</option>
-          <option value="1000">1000</option>
-          <option value="100000">All</option>
-        </HTMLSelect>
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Merchant</label>
+          <InputGroup
+            placeholder="Search merchant..."
+            value={filters.merchantName || ''}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                page: 1,
+                merchantName: e.target.value || undefined,
+              }))
+            }
+            leftIcon="search"
+          />
+        </div>
+
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Per Page</label>
+          <HTMLSelect
+            value={filters.pageSize?.toString() || '100'}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                page: 1,
+                pageSize: parseInt(e.target.value),
+              }))
+            }
+          >
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="1000">1000</option>
+            <option value="100000">All</option>
+          </HTMLSelect>
+        </div>
       </div>
 
       {data && data.transactions.length === 0 ? (
@@ -407,7 +459,11 @@ export function TransactionsView() {
                   transaction.metadata,
                 );
                 return (
-                  <tr key={transaction.id}>
+                  <tr
+                    key={transaction.id}
+                    onClick={() => openEdit(transaction)}
+                    className={styles.clickableRow}
+                  >
                     <td>{formatDate(transaction.date)}</td>
                     <td>
                       {transaction.title}
@@ -474,12 +530,11 @@ export function TransactionsView() {
               return (
                 <tfoot>
                   <tr className={styles.totalRow}>
-                    <td>
-                      <strong>Page Total</strong>
-                    </td>
-                    <td className={styles.alignRight}>
+                    <td colSpan={2}>
+                      <strong>Page Total</strong>{' '}
                       <Tag minimal>{displayCurrency}</Tag>
                     </td>
+                    <td />
                     <td className={styles.alignRight}>
                       <Tag intent={Intent.SUCCESS}>
                         +{formatCurrency(convertedInflow, displayCurrency)}
@@ -490,11 +545,12 @@ export function TransactionsView() {
                         -{formatCurrency(convertedOutflow, displayCurrency)}
                       </Tag>
                     </td>
-                    <td colSpan={3} className={styles.alignRight}>
+                    <td className={styles.alignRight}>
                       <Tag intent={net >= 0 ? Intent.SUCCESS : Intent.DANGER}>
                         {net >= 0 ? '+' : '-'}{formatCurrency(Math.abs(net), displayCurrency)}
                       </Tag>
                     </td>
+                    <td />
                   </tr>
                 </tfoot>
               );

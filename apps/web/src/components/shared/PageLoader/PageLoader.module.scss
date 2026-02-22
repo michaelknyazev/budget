@@ -1,0 +1,9 @@
+@use "@/styles/tools/toRem" as *;
+
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: toRem(80px) toRem(24px);
+  flex: 1;
+}

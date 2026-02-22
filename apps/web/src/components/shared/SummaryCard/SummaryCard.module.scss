@@ -1,0 +1,61 @@
+@use "@/styles/tools/toRem" as *;
+@use "@/styles/colors" as *;
+@use "@/styles/mixins/breakpoints" as *;
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: toRem(16px);
+
+  @include tablet-down {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  padding: toRem(24px);
+}
+
+.label {
+  margin: 0 0 toRem(8px) 0;
+  font-size: toRem(13px);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: $c_title-gray;
+}
+
+.amount {
+  font-size: toRem(32px);
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.2;
+
+  @include mobile {
+    font-size: toRem(26px);
+  }
+
+  &.income {
+    color: $income-color;
+  }
+
+  &.expense {
+    color: $expense-color;
+  }
+
+  &.loan {
+    color: $loan-color;
+  }
+
+  &.primary {
+    color: $c_accent;
+  }
+
+  &.warning {
+    color: $intent-warning;
+  }
+}

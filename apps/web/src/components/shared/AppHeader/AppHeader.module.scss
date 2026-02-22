@@ -6,10 +6,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: toRem(12px) toRem(24px);
-  background: $c_header-bg;
-  border-bottom: 1px solid $c_header-border;
-  min-height: toRem(56px);
+  padding: toRem(16px) toRem(24px);
+  background: #ffffff;
+  border-bottom: 1px solid #e1e8ed;
+  min-height: toRem(60px);
 
   @include mobile {
     padding: toRem(12px) toRem(16px);

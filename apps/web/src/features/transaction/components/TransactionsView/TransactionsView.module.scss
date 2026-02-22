@@ -14,6 +14,20 @@
   flex-wrap: wrap;
 }
 
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: toRem(4px);
+}
+
+.filterLabel {
+  font-size: toRem(11px);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: $c_title-gray;
+}
+
 .table {
   width: 100%;
 
@@ -26,6 +40,10 @@
 
 .selectedRow {
   background-color: $c_accent-light !important;
+}
+
+.clickableRow {
+  cursor: pointer;
 }
 
 .pagination {
@@ -86,11 +104,11 @@
 }
 
 .incomeText {
-  color: #15b371;
+  color: $income-color;
   font-weight: 600;
 }
 
 .expenseText {
-  color: #cd4246;
+  color: $expense-color;
   font-weight: 600;
 }

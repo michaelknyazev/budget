@@ -1,0 +1,33 @@
+@use "@/styles/tools/toRem" as *;
+@use "@/styles/colors" as *;
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(toRem(300px), 1fr));
+  gap: toRem(16px);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: toRem(16px);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: toRem(10px);
+}
+
+.cardActions {
+  display: flex;
+  gap: toRem(8px);
+  justify-content: flex-end;
+  margin-top: auto;
+}

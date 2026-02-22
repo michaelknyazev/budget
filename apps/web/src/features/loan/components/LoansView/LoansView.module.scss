@@ -20,34 +20,10 @@
   color: $c_title;
 }
 
-.loansGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(toRem(300px), 1fr));
-  gap: toRem(16px);
-}
-
-.loanCard {
-  display: flex;
-  flex-direction: column;
-  gap: toRem(12px);
-}
-
-.cardHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
 .cardTitle {
   margin: 0;
   font-size: toRem(18px);
   color: $c_title;
-}
-
-.cardContent {
-  display: flex;
-  flex-direction: column;
-  gap: toRem(12px);
 }
 
 .amountRow {
@@ -64,10 +40,4 @@
 .cardDetail {
   color: $c_title-gray;
   font-size: toRem(13px);
-}
-
-.cardActions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: auto;
 }
