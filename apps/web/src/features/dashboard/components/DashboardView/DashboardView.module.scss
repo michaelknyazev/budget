@@ -166,6 +166,21 @@
   }
 }
 
+// Daily Transactions table
+.dailyTable {
+  width: 100%;
+
+  @include mobile {
+    font-size: toRem(12px);
+  }
+}
+
+.dailyTotals {
+  font-size: toRem(12px);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 // Year Summary Cards (Planned vs Actual)
 .yearSummaryGrid {
   display: grid;

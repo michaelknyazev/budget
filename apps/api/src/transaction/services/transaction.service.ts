@@ -61,7 +61,10 @@ export class TransactionService {
     if (query.merchantName) {
       where.merchantName = { $ilike: `%${query.merchantName}%` };
     }
-    if (query.month && query.year) {
+    if (query.day && query.month && query.year) {
+      const specificDate = new Date(Date.UTC(query.year, query.month - 1, query.day));
+      where.date = { $gte: specificDate, $lte: specificDate };
+    } else if (query.month && query.year) {
       const startDate = new Date(Date.UTC(query.year, query.month - 1, 1));
       const endDate = new Date(Date.UTC(query.year, query.month, 0));
       where.date = { $gte: startDate, $lte: endDate };

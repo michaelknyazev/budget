@@ -84,6 +84,13 @@ export const QueryTransactionsSchema = z.object({
     .max(2100)
     .optional()
     .describe('Filter by year'),
+  day: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(31)
+    .optional()
+    .describe('Filter by day of month'),
   currency: CurrencyEnum.optional().describe('Filter by currency'),
   type: TransactionTypeEnum.optional().describe('Filter by transaction type'),
   categoryId: z.string().uuid().optional().describe('Filter by category'),

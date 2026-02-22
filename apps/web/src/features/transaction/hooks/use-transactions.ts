@@ -23,6 +23,7 @@ export function useTransactions(filters: QueryTransactionsInput) {
       if (filters.pageSize !== undefined) params.pageSize = filters.pageSize;
       if (filters.month !== undefined) params.month = filters.month;
       if (filters.year !== undefined) params.year = filters.year;
+      if (filters.day !== undefined) params.day = filters.day;
       if (filters.type) params.type = filters.type;
       if (filters.currency) params.currency = filters.currency;
       if (filters.categoryId) params.categoryId = filters.categoryId;
