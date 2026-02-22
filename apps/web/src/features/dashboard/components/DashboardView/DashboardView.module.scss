@@ -60,6 +60,10 @@
   &.primary {
     color: $c_accent;
   }
+
+  &.warning {
+    color: $intent-warning;
+  }
 }
 
 .categories {

@@ -25,5 +25,7 @@ export const CreateLoanSchema = z.object({
 
 export type CreateLoanInput = z.infer<typeof CreateLoanSchema>;
 
-export const UpdateLoanSchema = CreateLoanSchema.partial();
+export const UpdateLoanSchema = CreateLoanSchema.partial().extend({
+  isRepaid: z.boolean().optional().describe('Whether the loan is fully repaid'),
+});
 export type UpdateLoanInput = z.infer<typeof UpdateLoanSchema>;

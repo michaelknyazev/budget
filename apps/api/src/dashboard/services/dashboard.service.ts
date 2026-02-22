@@ -45,6 +45,7 @@ export class DashboardService {
     displayCurrency: string,
   ) {
     const { startDate, endDate } = this.getMonthRange(month, year);
+    const midDate = new Date(Date.UTC(year, month - 1, 15));
 
     const transactions = await this.em.find(
       Transaction,
@@ -52,12 +53,14 @@ export class DashboardService {
         user: userId,
         date: { $gte: startDate, $lte: endDate },
       },
-      { populate: ['category'] },
+      { populate: ['category', 'plannedIncome', 'budgetTarget'] },
     );
 
     let grossIncome = 0;
     let totalExpenses = 0;
     let loanCost = 0;
+    let untrackedIncome = 0;
+    let untrackedExpenses = 0;
     const categoryTotals = new Map<string, { name: string; amount: number }>();
 
     for (const transaction of transactions) {
@@ -72,10 +75,16 @@ export class DashboardService {
 
       if (REAL_INCOME_TYPES.includes(type)) {
         grossIncome += amount;
+        if (!transaction.plannedIncome) {
+          untrackedIncome += amount;
+        }
       }
 
       if (REAL_EXPENSE_TYPES.includes(type)) {
         totalExpenses += amount;
+        if (!transaction.budgetTarget) {
+          untrackedExpenses += amount;
+        }
       }
 
       if (LOAN_COST_TYPES.includes(type)) {
@@ -99,9 +108,11 @@ export class DashboardService {
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
 
-    const depositBalance = this.round(
-      await this.computeDepositBalance(userId, displayCurrency, new Date(year, month - 1, 15)),
-    );
+    const [depositBalance, currentBalance, totalLoanAmount] = await Promise.all([
+      this.computeDepositBalance(userId, displayCurrency, midDate),
+      this.computeCurrentBalance(userId, displayCurrency, midDate),
+      this.computeTotalLoanAmount(userId, displayCurrency, midDate),
+    ]);
 
     return {
       grossIncome: this.round(grossIncome),
@@ -113,7 +124,11 @@ export class DashboardService {
         name: c.name,
         amount: this.round(c.amount),
       })),
-      depositBalance,
+      depositBalance: this.round(depositBalance),
+      currentBalance: this.round(currentBalance),
+      totalLoanAmount: this.round(totalLoanAmount),
+      untrackedIncome: this.round(untrackedIncome),
+      untrackedExpenses: this.round(untrackedExpenses),
     };
   }
 
@@ -126,8 +141,8 @@ export class DashboardService {
     year: number,
     displayCurrency: string,
   ): Promise<YearlySummaryResponse> {
-    const startDate = new Date(year, 0, 1);
-    const endDate = new Date(year, 11, 31);
+    const startDate = new Date(Date.UTC(year, 0, 1));
+    const endDate = new Date(Date.UTC(year, 11, 31));
 
     // Fetch actual transactions (with linked exchange rates),
     // planned income, and budget targets in parallel
@@ -228,7 +243,7 @@ export class DashboardService {
 
       const plannedAmount = parseFloat(planned.plannedAmount);
       const sourceCurrency = planned.incomeSource.currency;
-      const midDate = new Date(year, monthIdx, 15);
+      const midDate = new Date(Date.UTC(year, monthIdx, 15));
 
       const convertedPlanned = await this.convert(
         plannedAmount,
@@ -246,7 +261,7 @@ export class DashboardService {
       if (!bucket) continue;
 
       const targetAmount = parseFloat(target.targetAmount);
-      const midDate = new Date(year, monthIdx, 15);
+      const midDate = new Date(Date.UTC(year, monthIdx, 15));
 
       const convertedTarget = await this.convert(
         targetAmount,
@@ -453,12 +468,12 @@ export class DashboardService {
     // Calculate previous months' savings using balance-based net worth
     const previousSavings = await this.getNetWorthAtDate(
       userId,
-      new Date(year, month - 1, 1), // first day of this month
+      new Date(Date.UTC(year, month - 1, 1)),
       displayCurrency,
     );
     const currentSavings = await this.getNetWorthAtDate(
       userId,
-      new Date(year, month, 1), // first day of next month
+      new Date(Date.UTC(year, month, 1)),
       displayCurrency,
     );
 
@@ -471,7 +486,7 @@ export class DashboardService {
         parseFloat(sub.amount),
         sub.currency,
         displayCurrency,
-        new Date(year, month - 1, 15), // mid-month for rate
+        new Date(Date.UTC(year, month - 1, 15)),
       );
     }
 
@@ -484,13 +499,13 @@ export class DashboardService {
         parseFloat(loan.amountLeft),
         loan.currency,
         displayCurrency,
-        new Date(year, month - 1, 15),
+        new Date(Date.UTC(year, month - 1, 15)),
       );
       loanMonthlyPayment += await this.convert(
         parseFloat(loan.monthlyPayment),
         loan.currency,
         displayCurrency,
-        new Date(year, month - 1, 15),
+        new Date(Date.UTC(year, month - 1, 15)),
       );
     }
 
@@ -553,7 +568,7 @@ export class DashboardService {
       },
       plannedIncome: comparison.items.length > 0 ? comparison.items : undefined,
       depositBalance: this.round(
-        await this.computeDepositBalance(userId, displayCurrency, new Date(year, month - 1, 15)),
+        await this.computeDepositBalance(userId, displayCurrency, new Date(Date.UTC(year, month - 1, 15))),
       ),
     };
   }
@@ -591,7 +606,7 @@ export class DashboardService {
     const balances: Record<string, number> = { ...startingBalances };
     const loans: Record<string, number> = {};
 
-    const yearStart = new Date(year, 0, 1);
+    const yearStart = new Date(Date.UTC(year, 0, 1));
 
     // Process pre-year transactions
     let txIdx = 0;
@@ -611,8 +626,8 @@ export class DashboardService {
     // 4. Process each month, snapshot at month-end
     const monthlyNetWorth: number[] = [];
     for (let month = 0; month < 12; month++) {
-      const nextMonthStart = new Date(year, month + 1, 1);
-      const monthEnd = new Date(year, month + 1, 0); // last day
+      const nextMonthStart = new Date(Date.UTC(year, month + 1, 1));
+      const monthEnd = new Date(Date.UTC(year, month + 1, 0));
 
       while (txIdx < transactions.length) {
         const tx = transactions[txIdx]!;
@@ -842,7 +857,7 @@ export class DashboardService {
     year: number,
     displayCurrency: string,
   ): Promise<number> {
-    const beforeDate = new Date(year, month - 1, 1); // first day of this month
+    const beforeDate = new Date(Date.UTC(year, month - 1, 1));
     const accountBaseline = await this.getAccountBaseline(
       userId,
       displayCurrency,
@@ -1038,9 +1053,72 @@ export class DashboardService {
 
   private getMonthRange(month: number, year: number) {
     return {
-      startDate: new Date(year, month - 1, 1),
-      endDate: new Date(year, month, 0),
+      startDate: new Date(Date.UTC(year, month - 1, 1)),
+      endDate: new Date(Date.UTC(year, month, 0)),
     };
+  }
+
+  /**
+   * Compute the current total balance across all non-deposit bank accounts
+   * by taking the latest BankImport's endBalance per account and converting
+   * to the display currency. Excludes DEPOSIT accounts (tracked separately
+   * via depositBalance). This is a point-in-time snapshot as of the last import.
+   */
+  private async computeCurrentBalance(
+    userId: string,
+    displayCurrency: string,
+    referenceDate: Date,
+  ): Promise<number> {
+    const imports = await this.em.find(
+      BankImport,
+      { bankAccount: { user: userId } },
+      { orderBy: { periodTo: 'DESC' }, populate: ['bankAccount'] },
+    );
+
+    const seen = new Set<string>();
+    let total = 0;
+
+    for (const imp of imports) {
+      const account = imp.bankAccount as any;
+      const accountId = account?.id ?? imp.bankAccount;
+      if (seen.has(accountId)) continue;
+      seen.add(accountId);
+
+      if (account?.accountType === 'DEPOSIT') continue;
+
+      const endBalance = (imp.endBalance || {}) as Record<string, number>;
+      for (const [cur, amount] of Object.entries(endBalance)) {
+        if (!amount) continue;
+        total += await this.convert(amount, cur, displayCurrency, referenceDate);
+      }
+    }
+
+    return total;
+  }
+
+  /**
+   * Sum all outstanding loan balances (amountLeft) converted to the display
+   * currency. Only counts active (non-repaid) loans.
+   */
+  private async computeTotalLoanAmount(
+    userId: string,
+    displayCurrency: string,
+    referenceDate: Date,
+  ): Promise<number> {
+    const loans = await this.loanService.findAll(userId);
+    let total = 0;
+
+    for (const loan of loans) {
+      if (loan.isRepaid) continue;
+      total += await this.convert(
+        parseFloat(loan.amountLeft),
+        loan.currency,
+        displayCurrency,
+        referenceDate,
+      );
+    }
+
+    return total;
   }
 
   /**

@@ -148,7 +148,7 @@ export class BudgetTargetService {
   ): Promise<BudgetTargetComparisonResponse> {
     const targets = await this.findAll(userId, year, month);
 
-    const midDate = new Date(year, month - 1, 15);
+    const midDate = new Date(Date.UTC(year, month - 1, 15));
 
     const items = [];
     let totalPlanned = 0;

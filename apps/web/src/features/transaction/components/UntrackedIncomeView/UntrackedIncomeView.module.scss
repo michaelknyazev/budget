@@ -1,0 +1,64 @@
+@use "@/styles/tools/toRem" as *;
+@use "@/styles/colors" as *;
+@use "@/styles/mixins/breakpoints" as *;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: toRem(24px);
+}
+
+.filters {
+  display: flex;
+  gap: toRem(12px);
+  flex-wrap: wrap;
+}
+
+.table {
+  width: 100%;
+
+  @include mobile {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: toRem(40px);
+}
+
+.incomeText {
+  color: #15b371;
+  font-weight: 600;
+}
+
+.totalRow {
+  background-color: $c_accent-light;
+  font-weight: 500;
+
+  td {
+    vertical-align: middle !important;
+  }
+}
+
+.alignRight {
+  text-align: right;
+}
+
+.formRow {
+  display: flex;
+  gap: toRem(12px);
+
+  @include mobile {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+
+.formHalf {
+  flex: 1;
+}

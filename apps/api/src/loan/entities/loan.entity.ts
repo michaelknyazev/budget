@@ -28,6 +28,9 @@ export class Loan {
   @Property({ type: 'text', nullable: true })
   loanNumber?: string | null;
 
+  @Property({ type: 'boolean' })
+  isRepaid: boolean & Opt = false;
+
   @Property({ type: 'timestamptz', defaultRaw: 'NOW()' })
   createdAt: Date & Opt = new Date();
 

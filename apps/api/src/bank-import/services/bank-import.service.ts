@@ -15,6 +15,8 @@ import { ExchangeRateService } from '@/exchange-rate/services/exchange-rate.serv
 import { ExchangeRate } from '@/exchange-rate/entities/exchange-rate.entity';
 import { BankStatementParser, ImportResult, SkippedDetail } from '../types/parser.types';
 import { TransactionType, AccountType, Currency, ExchangeRateSource } from '@budget/schemas';
+import { extractLoanNumber } from '../utils/loan-number.util';
+import { Loan } from '@/loan/entities/loan.entity';
 
 @Injectable()
 export class BankImportService {
@@ -370,6 +372,16 @@ export class BankImportService {
         );
       }
 
+      // Auto-link LOAN_REPAYMENT and LOAN_INTEREST to existing Loan entities
+      if (
+        effectiveType === TransactionType.LOAN_REPAYMENT ||
+        effectiveType === TransactionType.LOAN_INTEREST
+      ) {
+        await this.em.flush();
+        pendingCount = 0;
+        await this.autoLinkLoanTransaction(transaction, userId);
+      }
+
       // Flush in batches of 1000 to prevent memory pressure and
       // PostgreSQL parameter limits for very large imports
       if (pendingCount >= FLUSH_BATCH) {
@@ -613,6 +625,81 @@ export class BankImportService {
         'Reconciled NBG rates with nearby bank statement rates',
       );
     }
+  }
+
+  /**
+   * Auto-link a LOAN_REPAYMENT or LOAN_INTEREST transaction to its Loan.
+   * Strategy:
+   * 1. Extract loan number from rawDetails
+   * 2. Look up Loan by stored loanNumber (fast path for previously matched loans)
+   * 3. Fallback: find the oldest unmatched Loan with same currency + amount
+   * 4. Store loanNumber on the Loan for future matching, adjust balance for repayments
+   */
+  private async autoLinkLoanTransaction(
+    transaction: Transaction,
+    userId: string,
+  ): Promise<void> {
+    const loanNumber = extractLoanNumber(transaction.rawDetails);
+    let loan: Loan | null = null;
+
+    // Fast path: match by stored loan number
+    if (loanNumber) {
+      loan = await this.loanService.findByLoanNumber(loanNumber);
+    }
+
+    // Fallback for LOAN_REPAYMENT: find oldest unmatched loan by amount + currency
+    if (!loan && transaction.type === TransactionType.LOAN_REPAYMENT) {
+      const candidates = await this.em.find(
+        Loan,
+        {
+          user: userId,
+          currency: transaction.currency,
+          isRepaid: false,
+          loanNumber: null,
+        },
+        { orderBy: { createdAt: 'ASC' } },
+      );
+
+      // Find candidate with matching original disbursement amount
+      for (const candidate of candidates) {
+        const disbursement = await this.em.findOne(Transaction, {
+          loan: candidate.id,
+          type: TransactionType.LOAN_DISBURSEMENT,
+        });
+        if (disbursement && disbursement.amount === transaction.amount) {
+          loan = candidate;
+          break;
+        }
+      }
+    }
+
+    if (!loan) return;
+
+    // Link transaction to loan
+    this.em.assign(transaction, { loan: loan.id });
+
+    // Store loan number if not already set
+    if (loanNumber && !loan.loanNumber) {
+      loan.loanNumber = loanNumber;
+    }
+
+    // For repayments: mark loan as repaid and zero out balance
+    if (transaction.type === TransactionType.LOAN_REPAYMENT) {
+      loan.isRepaid = true;
+      loan.amountLeft = '0.00';
+    }
+
+    await this.em.flush();
+
+    this.logger.log(
+      {
+        transactionId: transaction.id,
+        loanId: loan.id,
+        loanNumber,
+        type: transaction.type,
+      },
+      'Auto-linked loan transaction',
+    );
   }
 
   /**

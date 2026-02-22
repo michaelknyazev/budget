@@ -3,26 +3,24 @@
 import { useState, useCallback } from 'react';
 import {
   HTMLTable,
-  Button,
-  ButtonGroup,
-  InputGroup,
   HTMLSelect,
   NonIdealState,
+  Spinner,
+  Tag,
+  Intent,
+  Button,
+  ButtonGroup,
   Dialog,
   DialogBody,
   DialogFooter,
-  Intent,
-  Tag,
-  Spinner,
   FormGroup,
+  InputGroup,
   NumericInput,
   Alert,
 } from '@blueprintjs/core';
-import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/shared/PageHeader';
 import {
   useTransactions,
-  useCreateTransaction,
   useUpdateTransaction,
   useDeleteTransaction,
 } from '../../hooks/use-transactions';
@@ -31,21 +29,18 @@ import { useIncomeSources, IncomeSource } from '@/features/settings/hooks/use-in
 import { usePlannedIncome, PlannedIncome } from '@/features/budget/hooks/use-planned-income';
 import { useBudgetTargets, BudgetTarget } from '@/features/budget/hooks/use-budget-targets';
 import { useLoans, Loan } from '@/features/loan/hooks/use-loans';
-import { useDisplayCurrency } from '@/contexts/DisplayCurrencyContext';
-import { useLatestRates } from '@/hooks/use-latest-rates';
 import {
   TransactionType,
   Currency,
-  INFLOW_TYPES,
-  OUTFLOW_TYPES,
-  LOAN_COST_TYPES,
   REAL_INCOME_TYPES,
   REAL_EXPENSE_TYPES,
   CreateTransactionInput,
   TransactionResponse,
   QueryTransactionsInput,
 } from '@budget/schemas';
-import styles from './TransactionsView.module.scss';
+import styles from './UntrackedExpensesView.module.scss';
+
+const now = new Date();
 
 const EMPTY_FORM: CreateTransactionInput = {
   title: '',
@@ -63,15 +58,13 @@ const EMPTY_FORM: CreateTransactionInput = {
   mccCode: null,
 };
 
-export function TransactionsView() {
-  const router = useRouter();
-  const now = new Date();
-
+export const UntrackedExpensesView = () => {
   const [filters, setFilters] = useState<QueryTransactionsInput>({
     page: 1,
-    pageSize: 100,
+    pageSize: 100000,
     month: now.getMonth() + 1,
     year: now.getFullYear(),
+    untrackedExpenses: true,
   });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -82,40 +75,24 @@ export function TransactionsView() {
   const { data, isLoading } = useTransactions(filters);
   const { data: categories } = useCategories();
   const { data: incomeSources } = useIncomeSources();
-  const { displayCurrency } = useDisplayCurrency();
-  const { data: latestRates } = useLatestRates();
+  const { data: loans } = useLoans();
 
-  // Fetch planned income for the current year (used in the transaction form dropdown)
   const { data: plannedIncomeItems } = usePlannedIncome({ year: now.getFullYear() });
-  // Also fetch previous year in case we're in January and need December entries
   const { data: plannedIncomePrevYear } = usePlannedIncome({ year: now.getFullYear() - 1 });
-
   const allPlannedIncome = [
     ...(plannedIncomePrevYear ?? []),
     ...(plannedIncomeItems ?? []),
   ];
 
-  // Fetch budget targets for the planned expense dropdown
   const { data: budgetTargetItems } = useBudgetTargets({ year: now.getFullYear() });
   const { data: budgetTargetPrevYear } = useBudgetTargets({ year: now.getFullYear() - 1 });
-
   const allBudgetTargets = [
     ...(budgetTargetPrevYear ?? []),
     ...(budgetTargetItems ?? []),
   ];
 
-  // Fetch loans for the loan dropdown
-  const { data: loans } = useLoans();
-
-  const createMutation = useCreateTransaction();
   const updateMutation = useUpdateTransaction();
   const deleteMutation = useDeleteTransaction();
-
-  const openCreate = useCallback(() => {
-    setEditingTransaction(null);
-    setForm({ ...EMPTY_FORM, date: new Date().toISOString().split('T')[0] });
-    setIsDialogOpen(true);
-  }, []);
 
   const openEdit = useCallback((tx: TransactionResponse) => {
     setEditingTransaction(tx);
@@ -145,8 +122,6 @@ export function TransactionsView() {
   const handleSave = async () => {
     if (editingTransaction) {
       await updateMutation.mutateAsync({ id: editingTransaction.id, input: form });
-    } else {
-      await createMutation.mutateAsync(form);
     }
     closeDialog();
   };
@@ -158,49 +133,13 @@ export function TransactionsView() {
     }
   };
 
-  const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
+  const transactions = data?.transactions || [];
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
-
-  const getAmountDisplay = (
-    amount: number,
-    type: string,
-    currency: string,
-    metadata?: Record<string, unknown> | null,
-  ) => {
-    const txType = type as TransactionType;
-    const isLoanCost = LOAN_COST_TYPES.includes(txType);
-
-    // For types with a fixed direction, use the constant lists
-    let isInflow = INFLOW_TYPES.includes(txType);
-
-    // For ambiguous types (FX_CONVERSION, TRANSFER), check metadata.direction
-    if (!INFLOW_TYPES.includes(txType) && !OUTFLOW_TYPES.includes(txType)) {
-      isInflow = metadata?.direction === 'inflow';
-    }
-
-    const prefix = isInflow ? '+' : '-';
-    const formatted = formatCurrency(amount, currency);
-    return { prefix, formatted, isInflow, isLoanCost };
-  };
-
-  const getAmountIntent = (isInflow: boolean, isLoanCost: boolean): Intent => {
-    if (isLoanCost) return Intent.WARNING;
-    return isInflow ? Intent.SUCCESS : Intent.DANGER;
-  };
+  const totalsByCurrency = transactions.reduce<Record<string, number>>((acc, t) => {
+    const cur = t.currency;
+    acc[cur] = (acc[cur] || 0) + parseFloat(String(t.amount));
+    return acc;
+  }, {});
 
   const getCategoryName = (categoryId: string | null): string => {
     if (!categoryId || !categories) return 'Uncategorized';
@@ -208,14 +147,26 @@ export function TransactionsView() {
     return cat ? cat.name : 'Uncategorized';
   };
 
-  const totalPages = data ? Math.ceil(data.total / (filters.pageSize || 100)) : 0;
-  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const formatCurrency = (amount: number, currency: string) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  const isSaving = updateMutation.isPending;
 
   if (isLoading) {
     return (
       <div className={styles.container}>
+        <PageHeader title="Untracked Expenses" />
         <div className={styles.loading}>
-          <Spinner size={50} />
+          <Spinner />
         </div>
       </div>
     );
@@ -223,23 +174,7 @@ export function TransactionsView() {
 
   return (
     <div className={styles.container}>
-      <PageHeader
-        title="Transactions"
-        actions={
-          <ButtonGroup>
-            <Button
-              intent={Intent.SUCCESS}
-              icon="import"
-              onClick={() => router.push('/transactions/import')}
-            >
-              Import Statement
-            </Button>
-            <Button intent={Intent.PRIMARY} icon="plus" onClick={openCreate}>
-              Create Transaction
-            </Button>
-          </ButtonGroup>
-        }
-      />
+      <PageHeader title="Untracked Expenses" />
 
       <div className={styles.filters}>
         <HTMLSelect
@@ -247,7 +182,6 @@ export function TransactionsView() {
           onChange={(e) =>
             setFilters((prev) => ({
               ...prev,
-              page: 1,
               month: e.target.value ? parseInt(e.target.value) : undefined,
             }))
           }
@@ -265,7 +199,6 @@ export function TransactionsView() {
           onChange={(e) =>
             setFilters((prev) => ({
               ...prev,
-              page: 1,
               year: e.target.value ? parseInt(e.target.value) : undefined,
             }))
           }
@@ -279,257 +212,76 @@ export function TransactionsView() {
             ),
           )}
         </HTMLSelect>
-
-        <HTMLSelect
-          value={filters.type || ''}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              page: 1,
-              type: (e.target.value || undefined) as any,
-            }))
-          }
-        >
-          <option value="">All Types</option>
-          {Object.values(TransactionType).map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </HTMLSelect>
-
-        <HTMLSelect
-          value={filters.currency || ''}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              page: 1,
-              currency: (e.target.value || undefined) as any,
-            }))
-          }
-        >
-          <option value="">All Currencies</option>
-          {Object.values(Currency).map((curr) => (
-            <option key={curr} value={curr}>
-              {curr}
-            </option>
-          ))}
-        </HTMLSelect>
-
-        <HTMLSelect
-          value={filters.categoryId || ''}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              page: 1,
-              categoryId: e.target.value || undefined,
-            }))
-          }
-        >
-          <option value="">All Categories</option>
-          {categories?.map((cat: Category) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
-            </option>
-          ))}
-        </HTMLSelect>
-
-        <InputGroup
-          placeholder="Search merchant..."
-          value={filters.merchantName || ''}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              page: 1,
-              merchantName: e.target.value || undefined,
-            }))
-          }
-          leftIcon="search"
-        />
-
-        <HTMLSelect
-          value={filters.pageSize?.toString() || '100'}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              page: 1,
-              pageSize: parseInt(e.target.value),
-            }))
-          }
-        >
-          <option value="50">50</option>
-          <option value="100">100</option>
-          <option value="1000">1000</option>
-          <option value="100000">All</option>
-        </HTMLSelect>
       </div>
 
-      {data && data.transactions.length === 0 ? (
+      {transactions.length === 0 ? (
         <NonIdealState
-          icon="bank-account"
-          title="No transactions found"
-          description="Import a bank statement or create a new transaction."
-          action={
-            <ButtonGroup>
-              <Button
-                intent={Intent.SUCCESS}
-                icon="import"
-                onClick={() => router.push('/transactions/import')}
-              >
-                Import Statement
-              </Button>
-              <Button intent={Intent.PRIMARY} icon="plus" onClick={openCreate}>
-                Create Transaction
-              </Button>
-            </ButtonGroup>
-          }
+          icon="tick-circle"
+          title="All expenses are budgeted"
+          description="Every expense transaction for this period is linked to a budget target."
         />
       ) : (
-        <>
-          <HTMLTable className={styles.table} striped bordered interactive>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Title</th>
-                <th>Category</th>
-                <th>Amount</th>
-                <th>Type</th>
-                <th>Currency</th>
-                <th style={{ width: 80 }}>Actions</th>
+        <HTMLTable bordered striped interactive className={styles.table}>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Title</th>
+              <th>Category</th>
+              <th>Type</th>
+              <th className={styles.alignRight}>Amount</th>
+              <th style={{ width: 80 }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {transactions.map((tx) => (
+              <tr key={tx.id}>
+                <td>{formatDate(tx.date)}</td>
+                <td>{tx.title}</td>
+                <td>
+                  <Tag minimal>{getCategoryName(tx.categoryId)}</Tag>
+                </td>
+                <td>
+                  <Tag minimal intent={Intent.DANGER}>
+                    {tx.type}
+                  </Tag>
+                </td>
+                <td className={`${styles.alignRight} ${styles.expenseText}`}>
+                  {formatCurrency(parseFloat(String(tx.amount)), tx.currency)}
+                </td>
+                <td>
+                  <ButtonGroup minimal>
+                    <Button icon="edit" small onClick={() => openEdit(tx)} />
+                    <Button
+                      icon="trash"
+                      small
+                      intent={Intent.DANGER}
+                      onClick={() => setDeleteId(tx.id)}
+                    />
+                  </ButtonGroup>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {data?.transactions.map((transaction) => {
-                const amountInfo = getAmountDisplay(
-                  transaction.amount,
-                  transaction.type,
-                  transaction.currency,
-                  transaction.metadata,
-                );
-                return (
-                  <tr key={transaction.id}>
-                    <td>{formatDate(transaction.date)}</td>
-                    <td>
-                      {transaction.title}
-                      {transaction.merchantName && transaction.merchantName !== transaction.title && (
-                        <span className={styles.merchantHint}> ({transaction.merchantName})</span>
-                      )}
-                    </td>
-                    <td>
-                      <Tag minimal>{getCategoryName(transaction.categoryId)}</Tag>
-                    </td>
-                    <td>
-                      <Tag intent={getAmountIntent(amountInfo.isInflow, amountInfo.isLoanCost)}>
-                        {amountInfo.prefix}
-                        {amountInfo.formatted}
-                      </Tag>
-                    </td>
-                    <td>
-                      <Tag minimal>{transaction.type}</Tag>
-                    </td>
-                    <td>{transaction.currency}</td>
-                    <td>
-                      <ButtonGroup minimal>
-                        <Button icon="edit" small onClick={() => openEdit(transaction)} />
-                        <Button
-                          icon="trash"
-                          small
-                          intent={Intent.DANGER}
-                          onClick={() => setDeleteId(transaction.id)}
-                        />
-                      </ButtonGroup>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            {data && data.transactions.length > 0 && (() => {
-              const displayRate = latestRates?.[displayCurrency] ?? 1;
-
-              let convertedInflow = 0;
-              let convertedOutflow = 0;
-
-              for (const tx of data.transactions) {
-                const txType = tx.type as TransactionType;
-                let isInflow = INFLOW_TYPES.includes(txType);
-                if (!INFLOW_TYPES.includes(txType) && !OUTFLOW_TYPES.includes(txType)) {
-                  isInflow = tx.metadata?.direction === 'inflow';
-                }
-
-                // Convert to display currency via GEL pivot:
-                // amountInGel = amount * rateToGel
-                // amountInDisplay = amountInGel / displayCurrencyRateToGel
-                const rateToGel = tx.rateToGel ?? (latestRates?.[tx.currency] ?? 1);
-                const converted = (tx.amount * rateToGel) / displayRate;
-
-                if (isInflow) {
-                  convertedInflow += converted;
-                } else {
-                  convertedOutflow += converted;
-                }
-              }
-
-              const net = convertedInflow - convertedOutflow;
-
-              return (
-                <tfoot>
-                  <tr className={styles.totalRow}>
-                    <td>
-                      <strong>Page Total</strong>
-                    </td>
-                    <td colSpan={2} className={styles.alignRight}>
-                      <Tag minimal>{displayCurrency}</Tag>
-                    </td>
-                    <td>
-                      <Tag intent={net >= 0 ? Intent.SUCCESS : Intent.DANGER}>
-                        {net >= 0 ? '+' : '-'}{formatCurrency(Math.abs(net), displayCurrency)}
-                      </Tag>
-                    </td>
-                    <td colSpan={3} className={styles.totalDetails}>
-                      <span className={styles.incomeText}>
-                        +{formatCurrency(convertedInflow, displayCurrency)}
-                      </span>
-                      {' / '}
-                      <span className={styles.expenseText}>
-                        -{formatCurrency(convertedOutflow, displayCurrency)}
-                      </span>
-                    </td>
-                  </tr>
-                </tfoot>
-              );
-            })()}
-          </HTMLTable>
-
-          {totalPages > 1 && (
-            <div className={styles.pagination}>
-              <ButtonGroup>
-                <Button
-                  icon="chevron-left"
-                  disabled={filters.page === 1}
-                  onClick={() => setFilters((prev) => ({ ...prev, page: prev.page! - 1 }))}
-                />
-                <Button minimal>
-                  Page {filters.page} of {totalPages}
-                </Button>
-                <Button
-                  icon="chevron-right"
-                  disabled={filters.page === totalPages}
-                  onClick={() => setFilters((prev) => ({ ...prev, page: prev.page! + 1 }))}
-                />
-              </ButtonGroup>
-              <span className={styles.totalCount}>
-                {data?.total} transaction{data?.total !== 1 ? 's' : ''}
-              </span>
-            </div>
-          )}
-        </>
+            ))}
+            <tr className={styles.totalRow}>
+              <td colSpan={5}>
+                Total ({transactions.length} transaction{transactions.length !== 1 ? 's' : ''})
+                {' — '}
+                <span className={styles.expenseText}>
+                  {Object.entries(totalsByCurrency)
+                    .map(([cur, amt]) => formatCurrency(amt, cur))
+                    .join(' + ')}
+                </span>
+              </td>
+              <td />
+            </tr>
+          </tbody>
+        </HTMLTable>
       )}
 
-      {/* Create / Edit Dialog */}
+      {/* Edit Dialog */}
       <Dialog
         isOpen={isDialogOpen}
         onClose={closeDialog}
-        title={editingTransaction ? 'Edit Transaction' : 'Create Transaction'}
+        title="Edit Transaction"
         style={{ width: 520 }}
       >
         <DialogBody>
@@ -661,7 +413,7 @@ export function TransactionsView() {
           )}
 
           {REAL_EXPENSE_TYPES.includes(form.type as TransactionType) && (
-            <FormGroup label="Planned Expense" helperText="Link to a planned expense entry to track spending">
+            <FormGroup label="Budget Target" helperText="Link to a budget target to track spending">
               <HTMLSelect
                 value={form.budgetTargetId ?? ''}
                 onChange={(e) =>
@@ -736,7 +488,7 @@ export function TransactionsView() {
                 loading={isSaving}
                 disabled={!form.title || !form.amount || !form.date}
               >
-                {editingTransaction ? 'Save Changes' : 'Create'}
+                Save Changes
               </Button>
             </>
           }
@@ -758,4 +510,4 @@ export function TransactionsView() {
       </Alert>
     </div>
   );
-}
+};

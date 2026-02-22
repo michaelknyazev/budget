@@ -40,6 +40,15 @@ export class LoanController {
     return { created };
   }
 
+  @Post('link-repayments')
+  @ApiOperation({ summary: 'Auto-link LOAN_REPAYMENT and LOAN_INTEREST transactions to loans' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async linkRepayments(
+    @CurrentUser() user: CurrentUserData,
+  ): Promise<{ repaymentsLinked: number; interestLinked: number; loansStillUnpaid: number }> {
+    return this.loanService.linkUnlinkedRepayments(user.id);
+  }
+
   @Get()
   @ApiOperation({ summary: 'List all loans' })
   @ApiResponse({ status: HttpStatus.OK })

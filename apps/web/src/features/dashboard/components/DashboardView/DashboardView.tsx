@@ -164,6 +164,50 @@ export function DashboardView() {
             </div>
           </Card>
         )}
+
+        <Card className={styles.summaryCard} elevation={0}>
+          <H4 className={styles.cardLabel}>Current Balance</H4>
+          <div className={`${styles.cardAmount} ${styles.primary}`}>
+            {data ? formatCurrency(data.currentBalance) : formatCurrency(0)}
+          </div>
+        </Card>
+
+        {data && data.totalLoanAmount > 0 && (
+          <Card className={styles.summaryCard} elevation={0}>
+            <H4 className={styles.cardLabel}>Loan Amount</H4>
+            <div className={`${styles.cardAmount} ${styles.loan}`}>
+              {formatCurrency(data.totalLoanAmount)}
+            </div>
+          </Card>
+        )}
+
+        {data && data.untrackedIncome > 0 && (
+          <Card
+            className={styles.summaryCard}
+            elevation={0}
+            interactive
+            onClick={() => router.push('/transactions/untracked-income')}
+          >
+            <H4 className={styles.cardLabel}>Untracked Income</H4>
+            <div className={`${styles.cardAmount} ${styles.warning}`}>
+              {formatCurrency(data.untrackedIncome)}
+            </div>
+          </Card>
+        )}
+
+        {data && data.untrackedExpenses > 0 && (
+          <Card
+            className={styles.summaryCard}
+            elevation={0}
+            interactive
+            onClick={() => router.push('/transactions/untracked-expenses')}
+          >
+            <H4 className={styles.cardLabel}>Untracked Expenses</H4>
+            <div className={`${styles.cardAmount} ${styles.warning}`}>
+              {formatCurrency(data.untrackedExpenses)}
+            </div>
+          </Card>
+        )}
       </div>
 
       {data && data.topCategories.length > 0 && (

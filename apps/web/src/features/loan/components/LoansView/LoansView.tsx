@@ -17,6 +17,7 @@ import {
   H3,
   Text,
   Tag,
+  SegmentedControl,
 } from '@blueprintjs/core';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { getToaster } from '@/lib/toaster';
@@ -28,6 +29,7 @@ import {
   useDeleteLoan,
   useRecalculateLoans,
 } from '../../hooks/use-loans';
+import { useLinkRepayments } from '../../hooks/use-link-repayments';
 import { CreateLoanInput } from '@budget/schemas';
 import styles from './LoansView.module.scss';
 
@@ -37,7 +39,9 @@ export const LoansView = () => {
   const updateMutation = useUpdateLoan();
   const deleteMutation = useDeleteLoan();
   const recalculateMutation = useRecalculateLoans();
+  const linkRepaymentsMutation = useLinkRepayments();
 
+  const [tab, setTab] = useState<'active' | 'repaid'>('active');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [editingLoan, setEditingLoan] = useState<{
@@ -153,6 +157,28 @@ export const LoansView = () => {
     }
   };
 
+  const handleLinkRepayments = async () => {
+    try {
+      const result = await linkRepaymentsMutation.mutateAsync();
+      const parts: string[] = [];
+      if (result.repaymentsLinked > 0) parts.push(`${result.repaymentsLinked} repayment(s)`);
+      if (result.interestLinked > 0) parts.push(`${result.interestLinked} interest payment(s)`);
+      const linked = parts.length > 0 ? parts.join(' and ') + ' linked' : 'No new links found';
+      const unpaid = result.loansStillUnpaid > 0 ? ` — ${result.loansStillUnpaid} loan(s) still unpaid` : '';
+      (await getToaster()).show({
+        message: `${linked}${unpaid}`,
+        intent: parts.length > 0 ? Intent.SUCCESS : Intent.NONE,
+        icon: parts.length > 0 ? 'tick' : 'info-sign',
+      });
+    } catch (error) {
+      (await getToaster()).show({
+        message: 'Failed to link repayments',
+        intent: Intent.DANGER,
+        icon: 'error',
+      });
+    }
+  };
+
   const handleRecalculate = async () => {
     try {
       const result = await recalculateMutation.mutateAsync();
@@ -179,12 +205,16 @@ export const LoansView = () => {
     }).format(amount);
   };
 
-  const totalRemaining = loans?.reduce(
+  const activeLoans = loans?.filter((l) => !l.isRepaid) || [];
+  const repaidLoans = loans?.filter((l) => l.isRepaid) || [];
+  const filteredLoans = tab === 'active' ? activeLoans : repaidLoans;
+
+  const totalRemaining = activeLoans.reduce(
     (sum, loan) => sum + parseFloat(loan.amountLeft),
     0,
-  ) || 0;
+  );
 
-  const displayCurrency = loans?.[0]?.currency || Currency.USD;
+  const displayCurrency = activeLoans[0]?.currency || Currency.USD;
 
   if (isLoading) {
     return (
@@ -201,6 +231,12 @@ export const LoansView = () => {
         actions={
           <>
             <Button
+              icon="link"
+              text="Link Repayments"
+              onClick={handleLinkRepayments}
+              loading={linkRepaymentsMutation.isPending}
+            />
+            <Button
               icon="refresh"
               text="Recalculate"
               onClick={handleRecalculate}
@@ -216,7 +252,16 @@ export const LoansView = () => {
         }
       />
 
-      {totalRemaining > 0 && (
+      <SegmentedControl
+        options={[
+          { label: `Active (${activeLoans.length})`, value: 'active' },
+          { label: `Repaid (${repaidLoans.length})`, value: 'repaid' },
+        ]}
+        value={tab}
+        onValueChange={(value) => setTab(value as 'active' | 'repaid')}
+      />
+
+      {tab === 'active' && totalRemaining > 0 && (
         <Card className={styles.totalCard}>
           <Text className={styles.totalLabel}>Total Remaining Debt</Text>
           <Tag intent={Intent.DANGER} large>
@@ -225,23 +270,29 @@ export const LoansView = () => {
         </Card>
       )}
 
-      {!loans || loans.length === 0 ? (
+      {filteredLoans.length === 0 ? (
         <NonIdealState
           icon="bank-account"
-          title="No loans"
-          description="Add your first loan to track debt."
+          title={tab === 'active' ? 'No active loans' : 'No repaid loans'}
+          description={
+            tab === 'active'
+              ? 'Add your first loan to track debt.'
+              : 'Loans will appear here once fully repaid.'
+          }
           action={
-            <Button
-              intent={Intent.PRIMARY}
-              icon="plus"
-              text="Add Loan"
-              onClick={() => handleOpenDialog()}
-            />
+            tab === 'active' ? (
+              <Button
+                intent={Intent.PRIMARY}
+                icon="plus"
+                text="Add Loan"
+                onClick={() => handleOpenDialog()}
+              />
+            ) : undefined
           }
         />
       ) : (
         <div className={styles.loansGrid}>
-          {loans.map((loan) => (
+          {filteredLoans.map((loan) => (
             <Card
               key={loan.id}
               className={styles.loanCard}
@@ -250,11 +301,16 @@ export const LoansView = () => {
             >
               <div className={styles.cardHeader}>
                 <H3 className={styles.cardTitle}>{loan.title}</H3>
+                {loan.isRepaid && (
+                  <Tag intent={Intent.SUCCESS} minimal>
+                    Repaid
+                  </Tag>
+                )}
               </div>
               <div className={styles.cardContent}>
                 <div className={styles.amountRow}>
                   <Text className={styles.amountLabel}>Remaining:</Text>
-                  <Tag intent={Intent.DANGER} large>
+                  <Tag intent={loan.isRepaid ? Intent.SUCCESS : Intent.DANGER} large>
                     {formatCurrency(parseFloat(loan.amountLeft), loan.currency)}
                   </Tag>
                 </div>
