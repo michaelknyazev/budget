@@ -28,6 +28,8 @@ export function useTransactions(filters: QueryTransactionsInput) {
       if (filters.categoryId) params.categoryId = filters.categoryId;
       if (filters.merchantName) params.merchantName = filters.merchantName;
       if (filters.mccCode !== undefined) params.mccCode = filters.mccCode;
+      if (filters.untrackedIncome) params.untrackedIncome = 1;
+      if (filters.untrackedExpenses) params.untrackedExpenses = 1;
 
       const { data } = await apiInstance.get<TransactionsResponse>('/transaction', {
         params,

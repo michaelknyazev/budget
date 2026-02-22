@@ -328,6 +328,16 @@
           "nullable": true,
           "mappedType": "text"
         },
+        "is_repaid": {
+          "name": "is_repaid",
+          "type": "boolean",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "default": "false",
+          "mappedType": "boolean"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamptz",
@@ -963,6 +973,15 @@
           "length": 36,
           "mappedType": "string"
         },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
         "category_id": {
           "name": "category_id",
           "type": "uuid",
@@ -1053,6 +1072,19 @@
       "name": "budget_target",
       "schema": "public",
       "indexes": [
+        {
+          "keyName": "budget_target_user_id_name_month_year_unique",
+          "columnNames": [
+            "user_id",
+            "name",
+            "month",
+            "year"
+          ],
+          "composite": true,
+          "constraint": true,
+          "primary": false,
+          "unique": true
+        },
         {
           "keyName": "budget_target_pkey",
           "columnNames": [
@@ -1790,6 +1822,24 @@
           "nullable": true,
           "mappedType": "uuid"
         },
+        "budget_target_id": {
+          "name": "budget_target_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "uuid"
+        },
+        "loan_id": {
+          "name": "loan_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "uuid"
+        },
         "exchange_rate_id": {
           "name": "exchange_rate_id",
           "type": "uuid",
@@ -1960,6 +2010,32 @@
             "id"
           ],
           "referencedTableName": "public.planned_income",
+          "deleteRule": "set null",
+          "updateRule": "cascade"
+        },
+        "transaction_budget_target_id_foreign": {
+          "constraintName": "transaction_budget_target_id_foreign",
+          "columnNames": [
+            "budget_target_id"
+          ],
+          "localTableName": "public.transaction",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.budget_target",
+          "deleteRule": "set null",
+          "updateRule": "cascade"
+        },
+        "transaction_loan_id_foreign": {
+          "constraintName": "transaction_loan_id_foreign",
+          "columnNames": [
+            "loan_id"
+          ],
+          "localTableName": "public.transaction",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.loan",
           "deleteRule": "set null",
           "updateRule": "cascade"
         },

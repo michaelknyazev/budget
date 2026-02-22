@@ -11,6 +11,7 @@ export interface Loan {
   currency: string;
   holder: string;
   loanNumber: string | null;
+  isRepaid: boolean;
   createdAt: string;
   updatedAt: string;
 }

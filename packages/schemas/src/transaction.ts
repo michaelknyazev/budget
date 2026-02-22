@@ -93,6 +93,14 @@ export const QueryTransactionsSchema = z.object({
     .int()
     .optional()
     .describe('Filter by MCC code'),
+  untrackedIncome: z.coerce
+    .boolean()
+    .optional()
+    .describe('Filter untracked income (no planned income linked)'),
+  untrackedExpenses: z.coerce
+    .boolean()
+    .optional()
+    .describe('Filter untracked expenses (no budget target linked)'),
 });
 
 export type QueryTransactionsInput = z.infer<typeof QueryTransactionsSchema>;

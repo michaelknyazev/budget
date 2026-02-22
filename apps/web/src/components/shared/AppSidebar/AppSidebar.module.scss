@@ -111,6 +111,45 @@ $sidebar-collapsed-width: 60px;
   }
 }
 
+.subNav {
+  display: flex;
+  flex-direction: column;
+  padding-left: toRem(26px);
+  gap: toRem(1px);
+
+  @include tablet-down {
+    display: none;
+  }
+}
+
+.subNavItem {
+  display: flex;
+  align-items: center;
+  padding: toRem(6px) toRem(12px);
+  border-radius: toRem(6px);
+  border: none;
+  background: transparent;
+  color: $c_title-gray;
+  cursor: pointer;
+  font-size: toRem(13px);
+  font-weight: 400;
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+  width: 100%;
+  text-align: left;
+
+  &:hover {
+    background: rgba($c_accent, 0.08);
+    color: $c_accent;
+  }
+
+  &.active {
+    color: $c_accent;
+    font-weight: 600;
+  }
+}
+
 .footer {
   padding: toRem(12px) toRem(8px);
   border-top: 1px solid $c_header-border;

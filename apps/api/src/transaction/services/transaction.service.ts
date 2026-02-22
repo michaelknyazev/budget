@@ -46,7 +46,15 @@ export class TransactionService {
   ): Promise<{ transactions: Transaction[]; total: number }> {
     const where: FilterQuery<Transaction> = { user: userId };
 
-    if (query.type) where.type = query.type as TransactionType;
+    if (query.untrackedIncome) {
+      where.type = { $in: [TransactionType.INCOME, TransactionType.INTEREST_INCOME] } as any;
+      where.plannedIncome = null;
+    } else if (query.untrackedExpenses) {
+      where.type = { $in: [TransactionType.EXPENSE, TransactionType.FEE, TransactionType.ATM_WITHDRAWAL] } as any;
+      where.budgetTarget = null;
+    } else if (query.type) {
+      where.type = query.type as TransactionType;
+    }
     if (query.currency) where.currency = query.currency as Currency;
     if (query.categoryId) where.category = query.categoryId;
     if (query.mccCode) where.mccCode = query.mccCode;
@@ -54,12 +62,12 @@ export class TransactionService {
       where.merchantName = { $ilike: `%${query.merchantName}%` };
     }
     if (query.month && query.year) {
-      const startDate = new Date(query.year, query.month - 1, 1);
-      const endDate = new Date(query.year, query.month, 0);
+      const startDate = new Date(Date.UTC(query.year, query.month - 1, 1));
+      const endDate = new Date(Date.UTC(query.year, query.month, 0));
       where.date = { $gte: startDate, $lte: endDate };
     } else if (query.year) {
-      const startDate = new Date(query.year, 0, 1);
-      const endDate = new Date(query.year, 11, 31);
+      const startDate = new Date(Date.UTC(query.year, 0, 1));
+      const endDate = new Date(Date.UTC(query.year, 11, 31));
       where.date = { $gte: startDate, $lte: endDate };
     }
 
@@ -164,8 +172,9 @@ export class TransactionService {
     try {
       const loan = await this.loanService.findById(loanId);
       const newAmount = Math.max(0, parseFloat(loan.amountLeft) + delta);
-      await this.loanService.update(loanId, { amountLeft: newAmount });
-      this.logger.log({ loanId, delta, newAmount }, 'Loan balance adjusted');
+      const isRepaid = newAmount === 0;
+      await this.loanService.update(loanId, { amountLeft: newAmount, isRepaid });
+      this.logger.log({ loanId, delta, newAmount, isRepaid }, 'Loan balance adjusted');
     } catch (error) {
       this.logger.warn({ loanId, delta }, 'Failed to adjust loan balance');
     }
